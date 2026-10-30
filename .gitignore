@@ -1,0 +1,24 @@
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+
+# Local virtual environment (heavy deps like torch/diffusers)
+venv/
+
+# Standalone local image generation script (needs torch/diffusers in venv, not used by main.py)
+gemini_image.py
+
+# Anki runtime state & per-user config (auto-generated, contains user API keys)
+user_files/
+meta.json
+meta.json.bak*
+
+# Backup files
+*.bak
+*.bak_*
+
+# Dev tool artifacts
+.claude/
+
+# Error logs (generated at runtime)
+editor_error_log.txt

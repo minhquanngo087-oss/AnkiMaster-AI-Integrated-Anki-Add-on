@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Flashcards — Học từ vựng kiểu Anki</title>
+<style>
+:root{
+    --bg:#f5f7fa; --card:#ffffff; --ink:#2c3e50; --ink-soft:#555;
+    --muted:#7f8c8d; --line:#e0e6ed; --line-soft:#e9ecef;
+    --blue:#007bff; --blue-deep:#0056b3; --blue-bg:#eaf4ff;
+    --green:#28a745; --green-deep:#218838; --green-bg:#e8f5e9;
+    --amber:#ff9800; --red:#e74c3c; --purple:#9b59b6; --teal:#1abc9c;
+    --shadow:0 4px 12px rgba(0,0,0,.07); --shadow-lg:0 8px 24px rgba(0,0,0,.12);
+    --radius:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+    font-family:Arial, Helvetica, sans-serif;
+    background:var(--bg); color:var(--ink);
+    min-height:100vh; text-align:center;
+    transition:background .3s,color .3s;
+}
+body.night{
+    --bg:#121417; --card:#1e2126; --ink:#e8eaed; --ink-soft:#c4c7cc;
+    --muted:#9aa0a6; --line:#33363c; --line-soft:#2a2d33;
+    --blue:#5b9bd5; --blue-bg:#1d2a38; --green:#57bb8a; --green-bg:#1f2e27;
+    --amber:#f4a736; --red:#ef5350; --purple:#b085d1; --teal:#45c6b0;
+    --shadow:0 4px 12px rgba(0,0,0,.5); --shadow-lg:0 8px 24px rgba(0,0,0,.6);
+}
+button{font-family:inherit;}
+.tappable{touch-action:manipulation;}
+
+/* ---------- TOP BAR ---------- */
+.topbar{
+    max-width:720px; margin:0 auto; padding:14px 16px 6px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    text-align:left;
+}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand .logo{
+    width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#007bff,#764ba2);
+    display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;
+    box-shadow:0 3px 8px rgba(0,123,255,.35);
+}
+.brand .name{font-weight:bold;font-size:16px;color:var(--ink);}
+.brand .sub{font-size:11px;color:var(--muted);}
+.top-actions{display:flex;gap:8px;align-items:center;}
+.icon-btn{
+    width:38px;height:38px;border-radius:10px;border:1px solid var(--line);
+    background:var(--card);color:var(--ink);cursor:pointer;font-size:17px;
+    display:flex;align-items:center;justify-content:center;transition:.15s;
+}
+.icon-btn:hover{transform:translateY(-1px);box-shadow:var(--shadow);}
+.icon-btn:active{transform:translateY(0);}
+
+/* ---------- DECK / STATS BAR ---------- */
+.statsbar{
+    max-width:720px;margin:8px auto 12px;padding:0 16px;text-align:left;
+    display:flex;align-items:center;gap:12px;
+}
+.deck-pill{
+    font-size:12px;font-weight:bold;color:var(--blue);
+    background:var(--blue-bg);border:1px solid transparent;padding:5px 12px;border-radius:20px;
+}
+.stat-mini{font-size:12px;color:var(--muted);}
+.progress-track{
+    max-width:720px;margin:0 auto 14px;padding:0 16px;
+}
+.progress-track .bar{
+    height:8px;border-radius:6px;background:var(--line-soft);overflow:hidden;
+}
+.progress-track .fill{
+    height:100%;width:0%;border-radius:6px;background:linear-gradient(90deg,#007bff,#764ba2);
+    transition:width .4s ease;
+}
+.progress-track .label{
+    display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:5px;
+}
+
+/* ---------- CARD ---------- */
+.stage{max-width:720px;margin:0 auto;padding:0 16px 20px;}
+.card{
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:26px 24px;text-align:left;transition:background .3s,box-shadow .3s,transform .2s;
+}
+.card.flip{animation:cardIn .28s ease;}
+@keyframes cardIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* FRONT */
+.word-and-tts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.word{font-size:40px;font-weight:bold;color:var(--ink);line-height:1.1;}
+.ipa{font-size:18px;color:var(--muted);margin-top:4px;}
+.pos-badge{
+    display:inline-block;background-color:#3498db;color:#fff;padding:4px 12px;border-radius:15px;
+    font-size:14px;margin-top:8px;font-weight:bold;
+}
+.content-section{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;
+    margin-top:18px;
+}
+.front-label{
+    font-size:12px;font-weight:bold;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;
+}
+.image-container{display:flex;justify-content:center;margin:4px 0 14px;}
+.image-container .ph{
+    width:100%;max-width:260px;aspect-ratio:1/1;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;font-size:88px;
+    box-shadow:var(--shadow);border:1px solid var(--line);
+}
+.definition-en{font-style:italic;color:var(--ink-soft);margin-bottom:12px;font-size:1.08em;line-height:1.5;}
+.definition-vi{
+    font-size:22px;font-weight:bold;color:#2980b9;padding:12px 14px;border:1px solid var(--line);
+    border-radius:12px;background:var(--blue-bg);line-height:1.4;
+}
+
+/* spell check */
+.spell-check-input-container{
+    margin-top:18px;padding:15px;border:1px solid var(--line);border-radius:12px;
+    background:var(--card);
+}
+.spell-check-title{font-weight:bold;margin-bottom:10px;font-size:15px;color:var(--ink);}
+.spell-check-input{
+    width:100%;padding:13px 15px;margin-bottom:10px;border:2px solid var(--line);border-radius:10px;
+    font-size:17px;box-sizing:border-box;background:var(--bg);color:var(--ink);outline:none;transition:.2s;
+}
+.spell-check-input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(76,175,80,.15);}
+.spell-check-hint{font-size:13px;color:var(--muted);}
+.spell-result{
+    display:none;margin-top:12px;padding:12px;border-radius:10px;font-weight:bold;font-size:16px;
+    line-height:1.5;
+}
+.spell-result.ok{display:block;background:var(--green-bg);color:#1b5e20;border-left:4px solid var(--green);}
+.spell-result.bad{display:block;background:#fff3e0;color:#5d4037;border-left:4px solid var(--amber);}
+body.night .spell-result.ok{color:#7ee2a8;}
+body.night .spell-result.bad{color:#ffd08a;}
+
+/* show answer */
+.show-answer-wrap{display:flex;justify-content:center;margin-top:18px;}
+.show-answer-btn{
+    padding:16px 40px;background:linear-gradient(135deg,#28a745,#1e7e34);color:#fff;border:none;
+    border-radius:12px;font-size:20px;font-weight:bold;cursor:pointer;transition:.2s;
+    box-shadow:0 4px 12px rgba(40,167,69,.35);min-width:220px;text-align:center;
+}
+.show-answer-btn:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(40,167,69,.45);}
+.show-answer-btn:active{transform:translateY(0);}
+
+/* BACK */
+.kbd-hint{font-size:12px;color:var(--muted);text-align:center;margin-top:10px;}
+
+/* TTS */
+.tts-btn{
+    cursor:pointer;background:#4CAF50;border:none;border-radius:50%;width:40px;height:40px;
+    display:inline-flex;align-items:center;justify-content:center;transition:.15s;font-size:17px;color:#fff;
+    box-shadow:0 2px 5px rgba(0,0,0,.2);flex-shrink:0;
+}
+.tts-btn:hover{background:#45a049;transform:scale(1.08);}
+.tts-btn.playing{background:#ff9800;animation:pulse 1s infinite;}
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.12)}100%{transform:scale(1)}}
+
+/* tabs */
+.tabs{
+    display:flex;flex-wrap:wrap;gap:6px;margin-top:20px;padding:6px;
+    background:var(--line-soft);border-radius:14px;
+}
+.tab-link{
+    flex:1;min-width:110px;border:none;background:transparent;padding:11px 8px;cursor:pointer;
+    font-size:14px;font-weight:bold;color:var(--ink-soft);transition:.2s;border-radius:10px;
+}
+.tab-link.active{background:var(--blue);color:#fff;box-shadow:0 3px 8px rgba(0,123,255,.3);}
+.tab-link:hover:not(.active){background:var(--line);}
+.tab-content{
+    display:none;background:var(--card);border:1px solid var(--line);padding:18px;
+    border-radius:14px;box-shadow:var(--shadow);text-align:left;margin-top:10px;
+}
+.tab-content.active{display:block;animation:cardIn .2s ease;}
+
+.item-title,.group-title{font-weight:bold;font-size:1.05em;margin-bottom:10px;color:var(--ink);}
+.tab-item{padding:14px;margin:10px 0;border-radius:10px;background:var(--bg);}
+.tab-item-group{margin:14px 0;padding-left:14px;border-left:4px solid var(--line);}
+.item-content{color:var(--ink-soft);line-height:1.5;font-size:1.05em;}
+
+/* lists */
+.item-list{margin-bottom:12px;}
+.item-list-word{font-weight:bold;font-size:1.08em;color:#d63384;}
+.item-list-pos{font-style:italic;font-size:.85em;color:var(--muted);}
+.item-list-example{font-style:italic;color:var(--ink-soft);padding-left:10px;margin-top:3px;}
+.item-list-translation{color:#28a745;font-style:italic;padding-left:10px;margin-top:3px;}
+
+/* recommendation */
+.recommend-use{border-left:4px solid #20c997;background:var(--green-bg);}
+.recommend-avoid{border-left:4px solid #fd7e14;background:#fff3e0;}
+.learning-tip{border-left:4px solid #ffc107;background:var(--blue-bg);}
+.memory-aid{border-left:4px solid #9C27B0;background:#f3e5f5;}
+body.night .memory-aid{background:#2a2133;}
+.no-data{color:var(--muted);font-style:italic;text-align:center;padding:16px;}
+
+/* exercises */
+.exercise-item{border:1px solid var(--line);border-radius:10px;padding:15px;margin:10px 0;background:var(--bg);}
+.exercise-item.correct{border-color:var(--green);}
+.exercise-item.incorrect{border-color:var(--red);}
+.exercise-type{font-size:.78em;font-weight:bold;color:#fff;background:var(--amber);padding:2px 9px;border-radius:10px;}
+.exercise-question{font-size:1.05em;color:var(--ink);margin:10px 0;line-height:2;}
+.exercise-input{display:inline-block;vertical-align:baseline;border:2px solid var(--line);border-radius:7px;
+    padding:4px 9px;font-size:1em;font-weight:bold;text-align:center;min-width:110px;background:var(--card);color:var(--ink);}
+.exercise-input:focus{outline:none;border-color:var(--blue);}
+.exercise-controls{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.chk-btn,.ans-btn{border:none;padding:8px 14px;border-radius:8px;font-weight:bold;cursor:pointer;color:#fff;font-size:14px;}
+.chk-btn{background:var(--blue);}
+.ans-btn{background:#6c757d;}
+.exercise-feedback{margin-top:10px;font-size:.95em;line-height:1.5;}
+.exercise-explanation{background:var(--line-soft);border-left:4px solid #6c757d;padding:12px;border-radius:8px;margin-top:10px;color:var(--ink-soft);}
+
+/* reading */
+.rd-passage{background:var(--bg);border-left:4px solid #3498db;border-radius:10px;padding:14px 16px;line-height:1.7;}
+.rd-title{font-weight:bold;font-size:1.1em;margin-bottom:8px;color:var(--ink);}
+.rd-text{line-height:1.8;font-size:1.02em;color:var(--ink);}
+.rd-key{background:#fff3cd;color:#c0392b;font-weight:bold;border-radius:3px;padding:0 3px;}
+.rd-translation{background:var(--green-bg);border-radius:8px;padding:10px 12px;margin-top:10px;color:#33691e;line-height:1.6;}
+body.night .rd-translation{color:#9fdcb0;}
+.rd-q{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;margin:10px 0;}
+.rd-q-text{font-weight:bold;color:var(--ink);margin-bottom:8px;}
+.rd-opt{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:8px;
+    padding:9px 12px;margin:5px 0;font-size:14px;cursor:pointer;color:var(--ink);transition:.15s;}
+.rd-opt:hover{border-color:var(--blue);}
+.rd-opt.right{background:var(--green-bg);border-color:var(--green);color:#1b5e20;font-weight:bold;}
+.rd-opt.wrong{background:#ffebee;border-color:var(--red);color:#b71c1c;}
+.rd-opt:disabled{cursor:default;}
+.rd-q-fb{font-size:14px;color:var(--ink-soft);margin-top:6px;line-height:1.5;}
+
+/* sentence practice */
+.sp-levels{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+.sp-level{flex:1;min-width:80px;padding:9px 6px;border:2px solid #c8e6c9;border-radius:9px;background:var(--card);
+    color:#2e7d32;font-weight:bold;font-size:14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.sp-level small{font-weight:normal;font-size:11px;color:var(--muted);}
+.sp-level.active{background:#4CAF50;border-color:#4CAF50;color:#fff;}
+.sp-level.active small{color:#e8f5e9;}
+.sp-task{background:var(--card);border-left:4px solid #2196F3;border-radius:10px;padding:13px;margin:10px 0;}
+.sp-task-label{font-size:12px;font-weight:bold;color:#1565c0;text-transform:uppercase;margin-bottom:6px;}
+.sp-task-text{font-size:1.05em;color:var(--ink);line-height:1.55;}
+.sp-phrase{display:inline-block;margin:8px 0;padding:7px 13px;background:#fff3cd;border:2px dashed var(--amber);
+    border-radius:9px;font-size:1.15em;font-weight:bold;color:#e65100;}
+.sp-input{width:100%;box-sizing:border-box;padding:12px;border:2px solid var(--line);border-radius:10px;
+    font-size:16px;line-height:1.5;font-family:inherit;resize:vertical;min-height:74px;background:var(--card);color:var(--ink);}
+.sp-input:focus{outline:none;border-color:var(--green);}
+.sp-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.sp-btn{flex:1;min-width:100px;padding:11px 14px;border:none;border-radius:9px;font-weight:bold;font-size:14px;cursor:pointer;color:#fff;}
+.sp-btn:disabled{opacity:.5;cursor:not-allowed;}
+.sp-btn-new{background:#2196F3;}
+.sp-btn-check{background:#4CAF50;}
+.sp-btn-reveal{background:#9e9e9e;}
+.sp-result{margin-top:12px;}
+.sp-verdict{padding:12px;border-radius:9px;margin-bottom:8px;line-height:1.5;}
+.sp-verdict.pass{background:var(--green-bg);border-left:4px solid var(--green);color:#1b5e20;}
+.sp-verdict.fail{background:#fff3e0;border-left:4px solid var(--amber);color:#5d4037;}
+body.night .sp-verdict.pass{color:#7ee2a8;}
+body.night .sp-verdict.fail{color:#ffd08a;}
+.sp-answer{background:var(--card);border-left:4px solid var(--green);border-radius:9px;padding:11px 13px;margin-bottom:8px;}
+
+/* rating buttons */
+.rating-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:20px;}
+.rate-btn{
+    border:none;border-radius:12px;padding:13px 8px;font-weight:bold;color:#fff;cursor:pointer;
+    font-size:15px;transition:.15s;box-shadow:var(--shadow);
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+}
+.rate-btn small{font-weight:normal;font-size:11px;opacity:.9;}
+.rate-btn:hover{transform:translateY(-2px);filter:brightness(1.05);}
+.rate-btn:active{transform:translateY(0);}
+.rate-again{background:#e74c3c;}
+.rate-hard{background:#f0a30a;}
+.rate-good{background:#28a745;}
+.rate-easy{background:#2196F3;}
+
+/* context section */
+.context-section{background:var(--blue-bg);padding:14px;border-radius:10px;margin:10px 0;border-left:4px solid #2196F3;}
+.context-title{font-weight:bold;color:#1565c0;margin-bottom:8px;font-size:1.05em;}
+.context-content{color:var(--ink);line-height:1.5;white-space:pre-wrap;background:var(--card);padding:10px;border-radius:8px;}
+
+/* other meaning */
+.other-meaning-item{background:var(--bg);padding:13px;margin:10px 0;border-radius:9px;border-left:4px solid var(--amber);}
+.other-meaning-header{display:flex;align-items:flex-start;margin-bottom:8px;}
+.other-meaning-index{background:var(--amber);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;
+    align-items:center;justify-content:center;font-weight:bold;margin-right:10px;flex-shrink:0;font-size:13px;}
+.other-meaning-text{font-weight:bold;color:var(--ink);font-size:1.05em;}
+.om-row{margin:6px 0;padding:7px 9px;background:var(--card);border-radius:7px;font-size:.92em;line-height:1.45;}
+.om-row b{color:var(--blue);}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);max-width:90%;padding:12px 18px;
+    border-radius:12px;font-weight:bold;box-shadow:var(--shadow-lg);z-index:999;display:none;text-align:center;}
+
+/* footer */
+.footer{max-width:720px;margin:0 auto 30px;padding:0 16px;font-size:11px;color:var(--muted);text-align:center;}
+
+@media (max-width:600px){
+    .card{padding:20px 16px;}
+    .word{font-size:32px;}
+    .rating-bar{grid-template-columns:repeat(4,1fr);gap:6px;}
+    .rate-btn{font-size:13px;padding:11px 4px;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="brand">
+        <div class="logo">📚</div>
+        <div>
+            <div class="name">Flashcards</div>
+            <div class="sub">Học từ vựng kiểu Anki</div>
+        </div>
+    </div>
+    <div class="top-actions">
+        <button class="icon-btn" id="home-btn" title="Về trang chủ" style="display:none;">🏠</button>
+        <button class="icon-btn" id="night-btn" title="Chế độ tối">🌙</button>
+    </div>
+</div>
+
+<div id="statsbar" class="statsbar" style="display:none;">
+    <span class="deck-pill" id="deck-name">Bộ từ vựng</span>
+    <span class="stat-mini" id="stat-new">🆕 Mới: 0</span>
+    <span class="stat-mini" id="stat-due">🔁 Ôn: 0</span>
+</div>
+<div id="progress" class="progress-track" style="display:none;">
+    <div class="bar"><div class="fill" id="progress-fill"></div></div>
+    <div class="label"><span id="progress-count">0 / 0</span><span id="progress-pct">0%</span></div>
+</div>
+
+<div class="stage" id="stage">
+    <!-- Card content rendered here -->
+</div>
+
+<div class="footer">
+    ⏎ / Space để hiện đáp án · 1-4 chấm điểm · Dữ liệu mẫu dựa trên template add-on Gemini Flashcard Generator
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================================
+   DATA — khớp cấu trúc field của add-on (FIELD_MAP trong main.py)
+   Các field phức tạp lưu dạng object/array trực tiếp để tiện render.
+   ========================================================================= */
+const DECK_NAME = "Bộ từ vựng tiếng Anh (mẫu)";
+
+const CARDS = [
+{
+  word:"serendipity", ipa:"/ˌserənˈdɪpəti/", pos:"noun",
+  definition_en:"(LUCKY FIND) the fact of finding interesting or valuable things by chance",
+  definition_vi:"sự tình cờ may mắn",
+  image:["#667eea","#764ba2","🍀"],
+  context:"education",
+  example_en:"Meeting my best friend at that little café was pure serendipity.",
+  example_vi:"Gặp người bạn thân nhất ở quán cà phê nhỏ đó hoàn toàn là một sự tình cờ may mắn.",
+  synonyms:[
+    {word:"chance", pos:"noun", meaning_vi:"sự tình cờ", example_en:"It happened by chance.", example_vi:"Chuyện đó xảy ra một cách tình cờ."},
+    {word:"fortune", pos:"noun", meaning_vi:"vận may", example_en:"By good fortune, she found her ring.", example_vi:"May mắn thay, cô ấy tìm lại được chiếc nhẫn."}
+  ],
+  antonyms:[
+    {word:"misfortune", pos:"noun", meaning_vi:"sự bất hạnh", example_en:"He blamed his misfortune on bad luck.", example_vi:"Anh ta đổ lỗi sự bất hạnh của mình cho vận rủi."}
+  ],
+  word_family:[
+    {word:"serendipitous", pos:"adjective", meaning_vi:"tình cờ may mắn"},
+    {word:"serendipitously", pos:"adverb", meaning_vi:"một cách tình cờ may mắn"}
+  ],
+  collocations:[
+    {phrase:"pure serendipity", meaning_vi:"hoàn toàn tình cờ", example_en:"It was pure serendipity.", example_vi:"Đó hoàn toàn là sự tình cờ."},
+    {phrase:"a stroke of serendipity", meaning_vi:"một cú tình cờ may mắn", example_en:"The discovery was a stroke of serendipity.", example_vi:"Khám phá đó là một cú tình cờ may mắn."}
+  ],
+  phrasal_verbs:[],
+  idioms:[
+    {phrase:"happy accident", meaning_vi:"sự cố vui vẻ (kết quả tình cờ tốt đẹp)", example_en:"The recipe was a happy accident.", example_vi:"Công thức đó là một sự cố vui vẻ."}
+  ],
+  other_meaning:[
+    {meaning:"sự may mắn tình cờ trong khám phá", context_vi:"dùng khi nói về khám phá khoa học, tình yêu, công việc", example_en:"Serendipity played a role in many great discoveries.", example_vi:"Sự tình cờ may mắn góp phần vào nhiều khám phá vĩ đại."}
+  ],
+  recommendation:{
+    use:["Dùng để chỉ những điều tốt đẹp đến một cách tình cờ, thường trong câu chuyện khám phá."],
+    avoid:["Không dùng cho sự may mắn thông thường (good luck) trong trò chơi hay thi cử."],
+    learning_tip:["Nhớ từ qua 'serene + dip': một khoảnh khắc yên bình mà bạn 'dip' vào được điều quý giá."],
+    memory_aid:"Serendipity = 'serene' + 'dip' — thả mình bình yên và vớt được may mắn."
+  },
+  grammar_notes:[],
+  usage_patterns:["Dùng như danh từ không đếm được: 'an act of serendipity'."],
+  etymology:{origin:"Đặt ra bởi Horace Walpole (1754) từ truyện cổ Ba Tư 'The Three Princes of Serendip'."},
+  reading:{
+    title:"The Power of Serendipity",
+    content:"Many of the world's greatest discoveries were not planned. When Alexander Fleming left a dish of bacteria uncovered, serendipity gave the world penicillin. Scientists often say that chance favors the prepared mind. Being open to surprises can turn an ordinary day into a remarkable one.",
+    translation:"Nhiều khám phá vĩ đại nhất thế giới không được lên kế hoạch trước. Khi Alexander Fleming để ngỏ một đĩa vi khuẩn, sự tình cờ may mắn đã mang penicillin đến cho thế giới. Các nhà khoa học thường nói rằng vận may ưu ái những tâm hồn có chuẩn bị. Biết đón nhận bất ngờ có thể biến một ngày bình thường thành một ngày phi thường.",
+    questions:[
+      {question:"What gave the world penicillin?", options:["A planned experiment","Serendipity","A lottery","A government grant"], correctAnswer:1, explanation:"Fleming's discovery came from an unplanned event — a classic case of serendipity."},
+      {question:"What does 'chance favors the prepared mind' imply?", options:["Luck is random","Prepared people notice lucky breaks","You must be lucky from birth","Chance dislikes scientists"], correctAnswer:1, explanation:"It means open, prepared people are more likely to turn chance into discovery."}
+    ]
+  },
+  exercises:[
+    {type:"Điền từ", question:"The discovery was a lucky _______.", answer:"serendipity", explanation:"'A lucky serendipity' không tự nhiên; dùng 'a stroke of serendipity'."},
+    {type:"Dịch", question:"Sự tình cờ may mắn đã đưa họ đến với nhau.", answer:"serendipity", explanation:"Ví dụ: 'Serendipity brought them together.'"}
+  ]
+},
+{
+  word:"meticulous", ipa:"/məˈtɪkjələs/", pos:"adjective",
+  definition_en:"(CAREFUL) giving great attention to every detail; very careful and precise",
+  definition_vi:"tỉ mỉ, kỹ lưỡng",
+  image:["#f093fb","#f5576c","🔍"],
+  example_en:"She kept meticulous records of every expense.",
+  example_vi:"Cô ấy ghi chép tỉ mỉ từng khoản chi tiêu.",
+  synonyms:[
+    {word:"thorough", pos:"adjective", meaning_vi:"kỹ lưỡng", example_en:"a thorough inspection", example_vi:"một cuộc kiểm tra kỹ lưỡng"},
+    {word:"precise", pos:"adjective", meaning_vi:"chính xác", example_en:"precise measurements", example_vi:"những phép đo chính xác"}
+  ],
+  antonyms:[
+    {word:"careless", pos:"adjective", meaning_vi:"cẩu thả", example_en:"a careless mistake", example_vi:"một lỗi cẩu thả"},
+    {word:"sloppy", pos:"adjective", meaning_vi:"luộm thuộm", example_en:"sloppy work", example_vi:"công việc luộm thuộm"}
+  ],
+  word_family:[
+    {word:"meticulously", pos:"adverb", meaning_vi:"một cách tỉ mỉ"},
+    {word:"meticulousness", pos:"noun", meaning_vi:"sự tỉ mỉ"}
+  ],
+  collocations:[
+    {phrase:"meticulous attention to detail", meaning_vi:"chú ý tỉ mỉ đến chi tiết", example_en:"Her success comes from meticulous attention to detail.", example_vi:"Thành công của cô đến từ sự chú ý tỉ mỉ đến chi tiết."},
+    {phrase:"meticulous planning", meaning_vi:"sự lên kế hoạch tỉ mỉ", example_en:"The event required meticulous planning.", example_vi:"Sự kiện đòi hỏi sự lên kế hoạch tỉ mỉ."}
+  ],
+  phrasal_verbs:[],
+  idioms:[],
+  other_meaning:[],
+  recommendation:{
+    use:["Thường đi với danh từ chỉ công việc, kế hoạch, hồ sơ, ghi chép."],
+    avoid:["Đừng nhầm với 'careful' khi chỉ đơn giản là 'cẩn thận' thông thường; meticulous mạnh hơn, nhấn mạnh từng chi tiết."],
+    learning_tip:["Nhớ chữ 'meticulous' có 'metic' gần với 'metric' (đo lường) — người đo đếm từng chi tiết."],
+    memory_aid:"Meticulous = đo từng 'metric' một — tỉ mỉ từng chi tiết."
+  },
+  grammar_notes:[],
+  usage_patterns:["meticulous about + N: 'He is meticulous about his work.'"],
+  etymology:{origin:"Từ Latin 'meticulosus' (đầy sợ hãi) → nghĩa chuyển thành 'thận trọng, kỹ lưỡng'."},
+  reading:null,
+  exercises:[
+    {type:"Điền từ", question:"She is very ______ about keeping her desk tidy.", answer:"meticulous", explanation:"'Meticulous about' là cấu trúc đúng."}
+  ]
+},
+{
+  word:"resilience", ipa:"/rɪˈzɪliəns/", pos:"noun",
+  definition_en:"(STRENGTH) the ability to recover quickly from difficulties or setbacks",
+  definition_vi:"khả năng phục hồi, sức bật tinh thần",
+  image:["#43e97b","#38f9d7","🌱"],
+  example_en:"Children often show remarkable resilience after difficult experiences.",
+  example_vi:"Trẻ em thường thể hiện khả năng phục hồi đáng kinh ngạc sau những trải nghiệm khó khăn.",
+  synonyms:[
+    {word:"toughness", pos:"noun", meaning_vi:"sự cứng cỏi", example_en:"mental toughness", example_vi:"sự cứng cỏi về tinh thần"},
+    {word:"flexibility", pos:"noun", meaning_vi:"sự linh hoạt", example_en:"emotional flexibility", example_vi:"sự linh hoạt cảm xúc"}
+  ],
+  antonyms:[
+    {word:"fragility", pos:"noun", meaning_vi:"sự mong manh", example_en:"the fragility of life", example_vi:"sự mong manh của cuộc sống"}
+  ],
+  word_family:[
+    {word:"resilient", pos:"adjective", meaning_vi:"kiên cường, có sức bật"},
+    {word:"resiliently", pos:"adverb", meaning_vi:"một cách kiên cường"}
+  ],
+  collocations:[
+    {phrase:"build resilience", meaning_vi:"xây dựng khả năng phục hồi", example_en:"Exercise helps build resilience.", example_vi:"Tập luyện giúp xây dựng sức bật tinh thần."},
+    {phrase:"show resilience", meaning_vi:"thể hiện sức bật", example_en:"The team showed great resilience.", example_vi:"Đội đã thể hiện sức bật tuyệt vời."}
+  ],
+  phrasal_verbs:[],
+  idioms:[],
+  other_meaning:[
+    {meaning:"sức bật đàn hồi (vật liệu)", context_vi:"dùng trong kỹ thuật/vật liệu", example_en:"The rubber's resilience makes it ideal for tires.", example_vi:"Sức bật của cao su khiến nó lý tưởng cho lốp xe."}
+  ],
+  recommendation:{
+    use:["Dùng cho người, tổ chức, nền kinh tế khi nói về khả năng vượt qua khó khăn."],
+    avoid:["Không dùng để chỉ sự phục hồi thể chất đơn thuần (đó là recovery)."],
+    learning_tip:["Nhớ 'resilience' = 're-' (lại) + 'silience' (nhảy lên) — nhảy lên lại sau khi ngã."],
+    memory_aid:"Resilience = 're' + 'silience' — bật dậy lại sau cú ngã."
+  },
+  grammar_notes:[],
+  usage_patterns:["resilience to + N: 'resilience to stress'."],
+  etymology:{origin:"Từ Latin 'resilire' (nhảy lùi lại, bật lại)."},
+  reading:null,
+  exercises:[
+    {type:"Điền từ", question:"The economy showed remarkable ______ after the crisis.", answer:"resilience", explanation:"'Show resilience' là collocation thường gặp."}
+  ]
+},
+{
+  word:"ephemeral", ipa:"/ɪˈfemərəl/", pos:"adjective",
+  definition_en:"(SHORT-LIVED) lasting for only a very short time",
+  definition_vi:"phù du, ngắn ngủi, chóng tàn",
+  image:["#ff9a9e","#fecfef","🌸"],
+  example_en:"Fame on social media can be ephemeral.",
+  example_vi:"Danh tiếng trên mạng xã hội có thể rất phù du.",
+  synonyms:[
+    {word:"fleeting", pos:"adjective", meaning_vi:"thoáng qua", example_en:"a fleeting moment", example_vi:"một khoảnh khắc thoáng qua"},
+    {word:"transient", pos:"adjective", meaning_vi:"tạm thời", example_en:"transient workers", example_vi:"công nhân tạm thời"}
+  ],
+  antonyms:[
+    {word:"permanent", pos:"adjective", meaning_vi:"lâu dài", example_en:"a permanent change", example_vi:"một thay đổi lâu dài"},
+    {word:"enduring", pos:"adjective", meaning_vi:"bền bỉ", example_en:"enduring love", example_vi:"tình yêu bền bỉ"}
+  ],
+  word_family:[
+    {word:"ephemera", pos:"noun", meaning_vi:"vật phù du (số nhiều)"},
+    {word:"ephemerality", pos:"noun", meaning_vi:"tính phù du"}
+  ],
+  collocations:[
+    {phrase:"ephemeral beauty", meaning_vi:"vẻ đẹp phù du", example_en:"Cherry blossoms symbolize ephemeral beauty.", example_vi:"Hoa anh đào tượng trưng cho vẻ đẹp phù du."}
+  ],
+  phrasal_verbs:[],
+  idioms:[
+    {phrase:"here today, gone tomorrow", meaning_vi:"đến hôm nay, mất ngày mai", example_en:"Trends are here today, gone tomorrow.", example_vi:"Xu hướng đến rồi đi rất nhanh."}
+  ],
+  other_meaning:[],
+  recommendation:{
+    use:["Dùng trong văn cảnh văn chương, triết lý, mô tả vẻ đẹp, thời gian."],
+    avoid:["Không dùng cho đồ vật hư hỏng nhanh (dùng 'flimsy' hoặc 'short-lived')."],
+    learning_tip:["Nhớ 'ephemeral' gần với 'mayfly' (phù du) — loài chỉ sống một ngày."],
+    memory_aid:"Ephemeral = con phù du (mayfly) — sống một ngày rồi tàn."
+  },
+  grammar_notes:[],
+  usage_patterns:["Đứng trước danh từ: 'ephemeral nature of fame'."],
+  etymology:{origin:"Từ Hy Lạp 'ephēmeros' (kéo dài một ngày)."},
+  reading:null,
+  exercises:[
+    {type:"Điền từ", question:"The beauty of the sunset is ______.", answer:"ephemeral", explanation:"Vẻ đẹp hoàng hôn chỉ tồn tại trong chốc lát."}
+  ]
+},
+{
+  word:"ubiquitous", ipa:"/juːˈbɪkwɪtəs/", pos:"adjective",
+  definition_en:"(EVERYWHERE) seeming to be present everywhere at the same time",
+  definition_vi:"có mặt ở khắp nơi, phổ biến khắp nơi",
+  image:["#4facfe","#00f2fe","📱"],
+  example_en:"Smartphones have become ubiquitous in modern life.",
+  example_vi:"Điện thoại thông minh đã trở nên có mặt ở khắp nơi trong cuộc sống hiện đại.",
+  synonyms:[
+    {word:"omnipresent", pos:"adjective", meaning_vi:"hiện diện khắp nơi", example_en:"an omnipresent brand", example_vi:"một thương hiệu hiện diện khắp nơi"},
+    {word:"widespread", pos:"adjective", meaning_vi:"lan rộng", example_en:"widespread use", example_vi:"việc sử dụng rộng rãi"}
+  ],
+  antonyms:[
+    {word:"rare", pos:"adjective", meaning_vi:"hiếm", example_en:"a rare species", example_vi:"một loài hiếm"},
+    {word:"scarce", pos:"adjective", meaning_vi:"khan hiếm", example_en:"scarce resources", example_vi:"nguồn lực khan hiếm"}
+  ],
+  word_family:[
+    {word:"ubiquity", pos:"noun", meaning_vi:"sự hiện diện khắp nơi"},
+    {word:"ubiquitously", pos:"adverb", meaning_vi:"một cách khắp nơi"}
+  ],
+  collocations:[
+    {phrase:"ubiquitous presence", meaning_vi:"sự hiện diện khắp nơi", example_en:"The company has a ubiquitous presence.", example_vi:"Công ty có sự hiện diện khắp nơi."}
+  ],
+  phrasal_verbs:[],
+  idioms:[],
+  other_meaning:[],
+  recommendation:{
+    use:["Dùng khi nói về công nghệ, thương hiệu, hiện tượng lan rộng."],
+    avoid:["Không dùng cho người cụ thể; ubiquitous nói về sự vật/hiện tượng."],
+    learning_tip:["Nhớ 'ubiquitous' có 'ubi-' như 'ubi' trong tiếng Latin nghĩa là 'ở đâu' — ở đâu cũng có."],
+    memory_aid:"Ubiquitous = ubi (ở đâu cũng) + quitous — ở đâu cũng thấy."
+  },
+  grammar_notes:[],
+  usage_patterns:["Đứng trước danh từ: 'ubiquitous advertising'."],
+  etymology:{origin:"Từ Latin 'ubique' (ở khắp mọi nơi)."},
+  reading:null,
+  exercises:[
+    {type:"Điền từ", question:"Wi-Fi is now ______ in most cafés.", answer:"ubiquitous", explanation:"Wi-Fi hiện có ở khắp nơi trong các quán cà phê."}
+  ]
+},
+{
+  word:"procrastinate", ipa:"/prəˈkræstɪneɪt/", pos:"verb",
+  definition_en:"(DELAY) to delay doing something that you should do, often because you do not want to do it",
+  definition_vi:"trì hoãn, chần chừ",
+  image:["#f6d365","#fda085","⏳"],
+  example_en:"He tends to procrastinate when it comes to writing reports.",
+  example_vi:"Anh ấy có xu hướng trì hoãn khi phải viết báo cáo.",
+  synonyms:[
+    {word:"delay", pos:"verb", meaning_vi:"trì hoãn", example_en:"delay the meeting", example_vi:"trì hoãn cuộc họp"},
+    {word:"put off", pos:"phrasal verb", meaning_vi:"hoãn lại", example_en:"put off a decision", example_vi:"hoãn lại quyết định"}
+  ],
+  antonyms:[
+    {word:"act promptly", pos:"phrase", meaning_vi:"hành động kịp thời", example_en:"act promptly on feedback", example_vi:"hành động kịp thời với phản hồi"}
+  ],
+  word_family:[
+    {word:"procrastination", pos:"noun", meaning_vi:"sự trì hoãn"},
+    {word:"procrastinator", pos:"noun", meaning_vi:"người hay trì hoãn"}
+  ],
+  collocations:[
+    {phrase:"procrastinate on + N", meaning_vi:"trì hoãn việc gì", example_en:"Don't procrastinate on your homework.", example_vi:"Đừng trì hoãn bài tập về nhà."}
+  ],
+  phrasal_verbs:[
+    {phrase:"put off", meaning_vi:"hoãn lại", example_en:"Stop putting off the difficult conversation.", example_vi:"Đừng hoãn cuộc trò chuyện khó khăn nữa."}
+  ],
+  idioms:[],
+  other_meaning:[],
+  recommendation:{
+    use:["Dùng với giới từ 'on' hoặc không có tân ngữ: 'I procrastinate on my taxes.'"],
+    avoid:["Không dùng 'procrastinate something' trực tiếp; phải có 'on' hoặc để nguyên."],
+    learning_tip:["Nhớ 'procrastinate' = 'pro' (đẩy) + 'cras' (ngày mai trong Latin) — đẩy sang ngày mai."],
+    memory_aid:"Procrastinate = pro + cras(tinum) — đẩy việc sang ngày mai."
+  },
+  grammar_notes:[],
+  usage_patterns:["procrastinate + on/about + N/V-ing."],
+  etymology:{origin:"Từ Latin 'procrastinare' — 'pro' (về phía trước) + 'crastinus' (của ngày mai)."},
+  reading:null,
+  exercises:[
+    {type:"Điền từ", question:"I always ______ on cleaning my room.", answer:"procrastinate", explanation:"'Procrastinate on + V-ing' là cấu trúc chuẩn."}
+  ]
+},
+{
+  word:"benevolent", ipa:"/bəˈnevələnt/", pos:"adjective",
+  definition_en:"(KIND) kind, generous and caring about other people",
+  definition_vi:"nhân từ, rộng lượng",
+  image:["#a18cd1","#fbc2eb","🤲"],
+  example_en:"A benevolent uncle paid for her university tuition.",
+  example_vi:"Một người bác nhân từ đã trả học phí đại học cho cô ấy.",
+  synonyms:[
+    {word:"kind", pos:"adjective", meaning_vi:"tử tế", example_en:"a kind gesture", example_vi:"một cử chỉ tử tế"},
+    {word:"generous", pos:"adjective", meaning_vi:"hào phóng", example_en:"a generous donor", example_vi:"một nhà hảo tâm"}
+  ],
+  antonyms:[
+    {word:"cruel", pos:"adjective", meaning_vi:"độc ác", example_en:"a cruel remark", example_vi:"một lời nhận xét độc ác"},
+    {word:"selfish", pos:"adjective", meaning_vi:"ích kỷ", example_en:"selfish behavior", example_vi:"hành vi ích kỷ"}
+  ],
+  word_family:[
+    {word:"benevolence", pos:"noun", meaning_vi:"lòng nhân từ"},
+    {word:"benevolently", pos:"adverb", meaning_vi:"một cách nhân từ"}
+  ],
+  collocations:[
+    {phrase:"benevolent smile", meaning_vi:"nụ cười nhân từ", example_en:"She gave a benevolent smile.", example_vi:"Bà nở một nụ cười nhân từ."}
+  ],
+  phrasal_verbs:[],
+  idioms:[],
+  other_meaning:[],
+  recommendation:{
+    use:["Dùng cho người, tổ chức, hành động có tính nhân từ, làm việc thiện."],
+    avoid:["Không dùng cho 'tốt bụng' đời thường kiểu 'a nice person'; benevolent trang trọng hơn."],
+    learning_tip:["Nhớ 'bene-' (tốt) + 'volent' (mong muốn) — mong muốn điều tốt cho người khác."],
+    memory_aid:"Benevolent = bene (tốt) + volent — muốn điều tốt đẹp."
+  },
+  grammar_notes:[],
+  usage_patterns:["benevolent towards + N."],
+  etymology:{origin:"Từ Latin 'benevolens' — 'bene' (tốt) + 'volens' (mong muốn)."},
+  reading:null,
+  exercises:[
+    {type:"Điền từ", question:"The charity was funded by a ______ donor.", answer:"benevolent", explanation:"'Benevolent donor' — nhà hảo tâm nhân từ."}
+  ]
+},
+{
+  word:"paradigm", ipa:"/ˈpærədaɪm/", pos:"noun",
+  definition_en:"(MODEL) a typical example or pattern of something; a model or way of thinking",
+  definition_vi:"hình mẫu, khuôn mẫu, mô hình tư duy",
+  image:["#ffecd2","#fcb69f","🧩"],
+  example_en:"The internet created a new paradigm for communication.",
+  example_vi:"Internet đã tạo ra một mô hình giao tiếp mới.",
+  synonyms:[
+    {word:"model", pos:"noun", meaning_vi:"mô hình", example_en:"a business model", example_vi:"một mô hình kinh doanh"},
+    {word:"framework", pos:"noun", meaning_vi:"khung mẫu", example_en:"a theoretical framework", example_vi:"một khung lý thuyết"}
+  ],
+  antonyms:[],
+  word_family:[
+    {word:"paradigmatic", pos:"adjective", meaning_vi:"mang tính khuôn mẫu"}
+  ],
+  collocations:[
+    {phrase:"paradigm shift", meaning_vi:"sự thay đổi mô hình tư duy", example_en:"The discovery caused a paradigm shift.", example_vi:"Khám phá đó gây ra một sự thay đổi mô hình tư duy."}
+  ],
+  phrasal_verbs:[],
+  idioms:[],
+  other_meaning:[
+    {meaning:"mẫu chia động từ/cách biến đổi từ (ngôn ngữ học)", context_vi:"dùng trong ngữ pháp", example_en:"The verb 'go' has an irregular paradigm.", example_vi:"Động từ 'go' có một mẫu biến đổi bất quy tắc."}
+  ],
+  recommendation:{
+    use:["Thường dùng trong học thuật, công nghệ, kinh doanh để nói về hệ thống tư duy."],
+    avoid:["Không dùng thay cho 'example' thông thường; paradigm mang nghĩa hệ thống."],
+    learning_tip:["Nhớ 'paradigm' phát âm là /ˈpærədaɪm/ — chữ 'g' câm."],
+    memory_aid:"Paradigm = 'para' + 'digm' — một khuôn mẫu song song (para) để theo."
+  },
+  grammar_notes:[],
+  usage_patterns:["a paradigm for/of + N: 'a new paradigm of education'."],
+  etymology:{origin:"Từ Hy Lạp 'paradeigma' (mẫu, kiểu mẫu)."},
+  reading:null,
+  exercises:[
+    {type:"Điền từ", question:"The shift to remote work is a ______ shift.", answer:"paradigm", explanation:"'Paradigm shift' là cụm từ cố định."}
+  ]
+}
+];
+
+/* =========================================================================
+   STATE
+   ========================================================================= */
+let queue = [];          // index của các thẻ trong buổi ôn
+let pos = 0;
+let flipped = false;
+let current = null;
+let stats = {new:0, due:0, reviewed:0};
+
+/* =========================================================================
+   UTIL
+   ========================================================================= */
+const $ = (s, r=document) => r.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g,'<br>');
+
+function detectLang(text){
+    if(!text) return 'en';
+    if(/[\u4e00-\u9fff]/.test(text)) return 'zh-CN';
+    if(/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(text)) return 'vi-VN';
+    if(/[\u3040-\u30ff]/.test(text)) return 'ja-JP';
+    return 'en-GB';
+}
+
+function toast(msg){
+    const t = $('#toast');
+    t.textContent = msg; t.style.display = 'block';
+    clearTimeout(t.__timer);
+    t.__timer = setTimeout(()=> t.style.display='none', 2600);
+}
+
+/* =========================================================================
+   TTS (Web Speech API — an toàn, không cần API key)
+   ========================================================================= */
+let ttsBtnEl = null;
+function speak(text, ev){
+    if(!text) return;
+    if(!('speechSynthesis' in window)){ toast('🔇 Trình duyệt không hỗ trợ đọc giọng'); return; }
+    const clean = text.replace(/[\(\[\{\<][^\)\]\}\>]*[\)\]\}\>]/g,'').trim() || text;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang = detectLang(clean);
+    u.rate = 0.9;
+    const voices = window.speechSynthesis.getVoices();
+    const v = voices.find(x=>x.lang===u.lang) || voices.find(x=>x.lang.startsWith(u.lang.split('-')[0]));
+    if(v) u.voice = v;
+
+    let btn = ev && ev.target ? (ev.target.closest ? ev.target.closest('button') : null) : null;
+    if(btn){ btn.classList.add('playing'); }
+    u.onend = u.onerror = () => { if(btn) btn.classList.remove('playing'); };
+    window.speechSynthesis.speak(u);
+}
+
+/* =========================================================================
+   RENDER — FRONT (câu hỏi)
+   ========================================================================= */
+function renderFront(card){
+    const img = card.image ? `
+        <div class="image-container"><div class="ph" style="background:linear-gradient(135deg,${card.image[0]},${card.image[1]})">${card.image[2]}</div></div>` : '';
+    return `
+    <div class="card flip">
+        <div class="word-and-tts">
+            <div class="front-label" style="margin:0;">✍️ Hãy nhớ lại từ vựng</div>
+        </div>
+        <div class="content-section">
+            <div class="front-label">Nghĩa tiếng Việt</div>
+            <div class="definition-vi">${esc(card.definition_vi)}</div>
+            ${img}
+            <div class="front-label">Định nghĩa tiếng Anh</div>
+            <div class="definition-en">📖 ${esc(card.definition_en)}</div>
+        </div>
+        <div class="spell-check-input-container">
+            <div class="spell-check-title">✏️ Nhập từ vựng bạn nghĩ tới</div>
+            <input type="text" class="spell-check-input" id="spellCheckInput" placeholder="Gõ từ tại đây..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+            <div class="spell-check-hint">💡 Nhập xong, bấm <b>Hiện đáp án</b> để kiểm tra chính tả</div>
+            <div class="spell-result" id="spellResult"></div>
+        </div>
+        <div class="show-answer-wrap">
+            <button class="show-answer-btn" id="showAnswerBtn">Hiện đáp án</button>
+        </div>
+        <div class="kbd-hint">Phím tắt: ⏎ / Space để lật thẻ</div>
+    </div>`;
+}
+
+/* =========================================================================
+   RENDER — BACK (đáp án)
+   ========================================================================= */
+function listSection(title, arr, opts){
+    if(!arr || !arr.length) return '';
+    const rows = arr.map(it=>{
+        if(!it) return '';
+        const word = opts && opts.wordKey ? it[opts.wordKey] : it.word || it.phrase;
+        const pos = it.pos ? ` <span class="item-list-pos">(${esc(it.pos)})</span>` : '';
+        const mv = it.meaning_vi ? ` — ${esc(it.meaning_vi)}` : '';
+        const ex = it.example_en ? `<div class="item-list-example">${esc(it.example_en)}</div>` : '';
+        const tr = it.example_vi ? `<div class="item-list-translation">${esc(it.example_vi)}</div>` : '';
+        return `<div class="item-list"><span class="item-list-word">${esc(word)}</span>${pos}${mv}${ex}${tr}</div>`;
+    }).join('');
+    return `<div class="tab-item-group"><div class="group-title">${title}</div>${rows}</div>`;
+}
+
+function otherMeaningSection(arr){
+    if(!arr || !arr.length) return '';
+    const rows = arr.map((m,i)=>`
+        <div class="other-meaning-item">
+            <div class="other-meaning-header"><span class="other-meaning-index">${i+1}</span><span class="other-meaning-text">${esc(m.meaning)}</span></div>
+            ${m.context_vi?`<div class="om-row"><b>📝 Ngữ cảnh:</b> ${esc(m.context_vi)}</div>`:''}
+            ${m.example_en?`<div class="om-row"><b>💡 Ví dụ:</b> ${esc(m.example_en)}</div>`:''}
+            ${m.example_vi?`<div class="om-row"><b>🌐 Dịch:</b> ${esc(m.example_vi)}</div>`:''}
+        </div>`).join('');
+    return `<div class="tab-item-group"><div class="group-title">🔤 Các nghĩa khác</div>${rows}</div>`;
+}
+
+function recommendationSection(rec){
+    if(!rec) return '<div class="no-data">Chưa có khuyến nghị</div>';
+    let h = '';
+    if(rec.use && rec.use.length) h += `<div class="tab-item recommend-use"><div class="item-title">✓ Nên dùng</div>${rec.use.map(x=>`<div class="item-content">${esc(x)}</div>`).join('')}</div>`;
+    if(rec.avoid && rec.avoid.length) h += `<div class="tab-item recommend-avoid"><div class="item-title">✗ Tránh dùng</div>${rec.avoid.map(x=>`<div class="item-content">${esc(x)}</div>`).join('')}</div>`;
+    if(rec.learning_tip && rec.learning_tip.length) h += `<div class="tab-item learning-tip"><div class="item-title">💡 Mẹo học</div>${rec.learning_tip.map(x=>`<div class="item-content">${esc(x)}</div>`).join('')}</div>`;
+    if(rec.memory_aid) h += `<div class="tab-item memory-aid"><div class="item-title">🧠 Gợi nhớ</div><div class="item-content">${esc(rec.memory_aid)}</div></div>`;
+    return h || '<div class="no-data">Chưa có khuyến nghị</div>';
+}
+
+function exercisesSection(exercises){
+    if(!exercises || !exercises.length) return '<div class="no-data">Chưa có bài tập</div>';
+    return exercises.map((ex,i)=>`
+        <div class="exercise-item" id="ex-${i}">
+            <span class="exercise-type">${esc(ex.type||'Bài tập')}</span>
+            <div class="exercise-question">${fmt(ex.question).replace(/_{3,}|_{2}/g, ()=>`<input class="exercise-input" data-ex="${i}" placeholder="...">`)}</div>
+            <div class="exercise-controls">
+                <button class="chk-btn" onclick="checkExercise(${i})">✅ Kiểm tra</button>
+                <button class="ans-btn" onclick="showExerciseAnswer(${i})">👀 Đáp án</button>
+            </div>
+            <div class="exercise-feedback" id="ex-fb-${i}"></div>
+        </div>`).join('');
+}
+
+function readingSection(reading){
+    if(!reading) return '<div class="no-data">Chưa có bài đọc cho từ này</div>';
+    const qs = reading.questions.map((q,qi)=>`
+        <div class="rd-q" id="rdq-${qi}">
+            <div class="rd-q-text">Câu ${qi+1}: ${esc(q.question)}</div>
+            ${q.options.map((o,oi)=>`<button class="rd-opt" onclick="answerReading(${qi},${oi})">${String.fromCharCode(65+oi)}. ${esc(o)}</button>`).join('')}
+            <div class="rd-q-fb" id="rdq-fb-${qi}"></div>
+        </div>`).join('');
+    return `
+        <div class="rd-passage">
+            <div class="rd-title">📖 ${esc(reading.title)}</div>
+            <div class="rd-text">${esc(reading.content)}</div>
+        </div>
+        <div class="rd-translation">🌐 ${esc(reading.translation)}</div>
+        ${qs}`;
+}
+
+function renderBack(card){
+    const hasBoSung = card.synonyms?.length || card.antonyms?.length || card.other_meaning?.length || card.etymology || card.context;
+    const hasMoRong = card.word_family?.length || card.collocations?.length || card.phrasal_verbs?.length || card.idioms?.length || card.usage_patterns?.length;
+    const hasKhuyenNghi = card.recommendation || card.grammar_notes?.length;
+    const hasApDung = card.reading;
+    const hasExercises = card.exercises?.length;
+
+    const tabs = [];
+    tabs.push(`<button class="tab-link active" data-tab="ViDu">💡 Ví dụ</button>`);
+    if(hasBoSung) tabs.push(`<button class="tab-link" data-tab="BoSung">➕ Bổ sung</button>`);
+    if(hasMoRong) tabs.push(`<button class="tab-link" data-tab="MoRong">🚀 Mở rộng</button>`);
+    if(hasKhuyenNghi) tabs.push(`<button class="tab-link" data-tab="KhuyenNghi">⭐ Khuyến nghị</button>`);
+    tabs.push(`<button class="tab-link" data-tab="LuyenCau">✍️ Luyện câu</button>`);
+    if(hasApDung) tabs.push(`<button class="tab-link" data-tab="ApDung">📝 Áp dụng</button>`);
+
+    const etymology = card.etymology ? `
+        <div class="tab-item-group">
+            <div class="group-title">🏺 Gốc từ</div>
+            ${card.etymology.origin?`<div class="item-content">${esc(card.etymology.origin)}</div>`:''}
+        </div>` : '';
+
+    const context = card.context ? `
+        <div class="context-section">
+            <div class="context-title">🎯 Ngữ cảnh được cung cấp:</div>
+            <div class="context-content">${esc(card.context)}</div>
+        </div>` : '';
+
+    return `
+    <div class="card flip">
+        <div class="word-section">
+            <div class="word-and-tts">
+                <div class="word">${esc(card.word)}</div>
+                <button class="tts-btn" onclick="speak('${esc(card.word)}', event)" title="Nghe phát âm">🔊</button>
+            </div>
+            <div class="ipa">${esc(card.ipa||'')}</div>
+            <div class="pos-badge">${esc(card.pos||'')}</div>
+        </div>
+
+        <div class="content-section">
+            <div class="definition-en">📖 ${esc(card.definition_en)}</div>
+            <div class="definition-vi">${esc(card.definition_vi)}</div>
+        </div>
+
+        <div class="tabs">${tabs.join('')}</div>
+
+        <div id="ViDu" class="tab-content active">
+            <div class="tab-item example-en">
+                <div class="item-title">Ví dụ</div>
+                <div class="example-with-tts" style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+                    <div class="item-content">${esc(card.example_en)}</div>
+                    <button class="tts-btn" style="width:32px;height:32px;font-size:13px;" onclick="speak('${esc(card.example_en)}', event)">🔊</button>
+                </div>
+            </div>
+            <div class="tab-item example-vi">
+                <div class="item-title">Nghĩa ví dụ</div>
+                <div class="item-content">${esc(card.example_vi)}</div>
+            </div>
+            <button class="ans-btn" style="width:100%;margin-top:4px;" onclick="toggleExercises()">📝 ${hasExercises?'Xem bài tập vận dụng':'Bài tập'} ▼</button>
+            <div id="exercises-wrapper" style="display:none;margin-top:6px;">${exercisesSection(card.exercises)}</div>
+        </div>
+
+        ${hasBoSung?`<div id="BoSung" class="tab-content">
+            ${listSection('🟣 Đồng nghĩa', card.synonyms)}
+            ${listSection('🔴 Trái nghĩa', card.antonyms)}
+            ${context}
+            ${otherMeaningSection(card.other_meaning)}
+            ${etymology}
+        </div>`:''}
+
+        ${hasMoRong?`<div id="MoRong" class="tab-content">
+            ${listSection('🟡 Họ từ', card.word_family)}
+            ${listSection('🟢 Collocations', card.collocations)}
+            ${listSection('🟠 Phrasal verbs', card.phrasal_verbs)}
+            ${listSection('🔵 Idioms', card.idioms)}
+            ${card.usage_patterns?.length?`<div class="tab-item-group"><div class="group-title">⚙️ Cách dùng</div>${card.usage_patterns.map(x=>`<div class="item-content" style="margin:4px 0;">• ${esc(x)}</div>`).join('')}</div>`:''}
+        </div>`:''}
+
+        ${hasKhuyenNghi?`<div id="KhuyenNghi" class="tab-content">
+            ${recommendationSection(card.recommendation)}
+            ${card.grammar_notes?.length?listSection('§ Ghi chú ngữ pháp', card.grammar_notes):''}
+        </div>`:''}
+
+        <div id="LuyenCau" class="tab-content">
+            <div class="sp-title" style="font-size:1.1em;font-weight:bold;margin-bottom:12px;">✍️ Luyện câu với "<span style="color:#e74c3c;">${esc(card.word)}</span>"</div>
+            <div class="sp-levels" id="sp-levels"></div>
+            <div class="sp-task" id="sp-task"></div>
+            <textarea id="sp-input" class="sp-input" rows="3" placeholder="Viết câu trả lời của bạn ở đây..." autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"></textarea>
+            <div class="sp-actions">
+                <button class="sp-btn sp-btn-new" onclick="spNewTask()">🎲 Đề mới</button>
+                <button class="sp-btn sp-btn-check" onclick="spCheck()">✅ Tự chấm</button>
+                <button class="sp-btn sp-btn-reveal" onclick="spReveal()">👀 Xem gợi ý</button>
+            </div>
+            <div class="sp-result" id="sp-result"></div>
+        </div>
+
+        ${hasApDung?`<div id="ApDung" class="tab-content">${readingSection(card.reading)}</div>`:''}
+
+        <div class="rating-bar">
+            <button class="rate-btn rate-again" data-rate="again">🔁 Lại<small>1 phút</small></button>
+            <button class="rate-btn rate-hard" data-rate="hard">🤔 Khó<small>6 phút</small></button>
+            <button class="rate-btn rate-good" data-rate="good">😊 Tốt<small>10 phút</small></button>
+            <button class="rate-btn rate-easy" data-rate="easy">🚀 Dễ<small>4 ngày</small></button>
+        </div>
+        <div class="kbd-hint">Phím 1-4 để chấm điểm · ⏎ / Space để lật</div>
+    </div>`;
+}
+
+/* =========================================================================
+   INTERACTIONS
+   ========================================================================= */
+function toggleExercises(){
+    const w = $('#exercises-wrapper');
+    if(!w) return;
+    w.style.display = w.style.display==='none' ? 'block' : 'none';
+}
+
+function checkExercise(i){
+    const input = $(`.exercise-input[data-ex="${i}"]`);
+    const item = $(`#ex-${i}`);
+    const fb = $(`#ex-fb-${i}`);
+    if(!input){ return; }
+    const ans = CARDS[current].exercises[i].answer.toLowerCase();
+    const val = input.value.trim().toLowerCase();
+    if(val === ans){
+        item.className = 'exercise-item correct';
+        fb.innerHTML = `<div class="exercise-explanation"><strong>✅ Chính xác!</strong> ${esc(CARDS[current].exercises[i].explanation||'')}</div>`;
+    } else {
+        item.className = 'exercise-item incorrect';
+        fb.innerHTML = `<div class="exercise-explanation"><strong>❌ Chưa đúng.</strong> Đáp án: <b>${esc(CARDS[current].exercises[i].answer)}</b><br>${esc(CARDS[current].exercises[i].explanation||'')}</div>`;
+    }
+}
+
+function showExerciseAnswer(i){
+    const input = $(`.exercise-input[data-ex="${i}"]`);
+    if(input) input.value = CARDS[current].exercises[i].answer;
+    checkExercise(i);
+}
+
+let readingAnswered = {};
+function answerReading(qi, oi){
+    const q = CARDS[current].reading.questions[qi];
+    const correct = q.correctAnswer;
+    const opts = $(`#rdq-${qi}`).querySelectorAll('.rd-opt');
+    opts.forEach((o,idx)=>{
+        o.disabled = true;
+        if(idx === correct) o.classList.add('right');
+        if(idx === oi && oi !== correct) o.classList.add('wrong');
+    });
+    const fb = $(`#rdq-fb-${qi}`);
+    fb.innerHTML = (oi===correct ? '✅ Đúng! ' : '❌ Sai. ') + esc(q.explanation||'');
+}
+
+/* ---------- Luyện câu (offline, tự chấm) ---------- */
+const SP_LEVELS = {
+    1:{name:'Bậc 1', short:'Cụm từ'},
+    2:{name:'Bậc 2', short:'Câu đơn'},
+    3:{name:'Bậc 3', short:'Tình huống'},
+    free:{name:'Tự do', short:'Tự đặt câu'}
+};
+let spMode = 1;
+let spTaskIndex = 0;
+
+const SP_TASKS = [
+    {level:1, task_vi:'Hãy đặt một cụm từ ngắn với từ này và giới từ đi kèm của nó.', must:[]},
+    {level:2, task_vi:'Viết một câu đơn (8–16 từ) có sử dụng đúng nghĩa của từ này.', must:[]},
+    {level:3, task_vi:'Miêu tả một tình huống đời thực và viết 1–2 câu phản hồi có dùng từ này.', must:[]},
+    {level:'free', task_vi:'Tự do viết bất kỳ câu nào có dùng từ này.', must:[]}
+];
+
+function spRenderLevels(){
+    const box = $('#sp-levels');
+    if(!box) return;
+    box.innerHTML = [1,2,3].map(l=>`<button class="sp-level ${spMode===l?'active':''}" onclick="spSetMode(${l})">⭐ ${SP_LEVELS[l].name}<small>${SP_LEVELS[l].short}</small></button>`).join('')
+        + `<button class="sp-level ${spMode==='free'?'active':''}" onclick="spSetMode('free')">✍️ ${SP_LEVELS.free.name}<small>${SP_LEVELS.free.short}</small></button>`;
+}
+
+function spSetMode(m){ spMode = m; spRenderLevels(); spRenderTask(); $('#sp-result').innerHTML=''; }
+
+function spRenderTask(){
+    const box = $('#sp-task');
+    if(!box) return;
+    const t = SP_TASKS.find(x=>x.level===spMode) || SP_TASKS[0];
+    if(spMode === 1){
+        box.innerHTML = `<div class="sp-task-label">${SP_LEVELS[1].name} · ${SP_LEVELS[1].short}</div><div class="sp-task-text">Viết cụm ${detectLang(CARDS[current].word)==='zh-CN'?'tiếng Trung':'tiếng Anh'} cho:</div><div class="sp-phrase">${esc(CARDS[current].definition_vi)}</div><div class="sp-task-text" style="color:var(--muted);font-size:14px;margin-top:6px;">Gợi ý: cụm này thường đi với giới từ / từ đi kèm. Xem tab "Mở rộng" để biết collocations.</div>`;
+    } else if(spMode === 2){
+        box.innerHTML = `<div class="sp-task-label">${SP_LEVELS[2].name} · ${SP_LEVELS[2].short}</div><div class="sp-task-text">Viết một câu tiếng Anh dùng từ "<b>${esc(CARDS[current].word)}</b>" đúng nghĩa trên thẻ.</div>`;
+    } else if(spMode === 3){
+        box.innerHTML = `<div class="sp-task-label">${SP_LEVELS[3].name} · ${SP_LEVELS[3].short}</div><div class="sp-task-text">Miêu tả một tình huống đời thực bằng tiếng Anh (1–2 câu) và bắt buộc dùng từ "<b>${esc(CARDS[current].word)}</b>".</div>`;
+    } else {
+        box.innerHTML = `<div class="sp-task-label">${SP_LEVELS.free.name} · ${SP_LEVELS.free.short}</div><div class="sp-task-text">Tự đặt một câu bất kỳ có dùng "<b>${esc(CARDS[current].word)}</b>".</div>`;
+    }
+}
+
+function spNewTask(){ spRenderTask(); $('#sp-input').value=''; $('#sp-result').innerHTML=''; $('#sp-input').focus(); }
+
+function spCheck(){
+    const val = $('#sp-input').value.trim();
+    if(!val){ toast('✍️ Hãy viết câu trả lời trước'); return; }
+    const contains = val.toLowerCase().includes(CARDS[current].word.toLowerCase());
+    const box = $('#sp-result');
+    if(contains){
+        box.innerHTML = `<div class="sp-verdict pass"><div style="font-weight:bold;">✅ Có dùng từ "${esc(CARDS[current].word)}"</div>Bạn đã viết: <i>${esc(val)}</i><br><span style="color:var(--muted);font-size:13px;">Đây là bản tự chấm ngoại tuyến. Đối chiếu với ví dụ ở tab "Ví dụ" để tự đánh giá ngữ pháp.</span></div>`;
+    } else {
+        box.innerHTML = `<div class="sp-verdict fail"><div style="font-weight:bold;">⚠️ Câu chưa dùng từ "${esc(CARDS[current].word)}"</div>Hãy thử lại, đảm bảo câu có chứa chính xác từ cần luyện.</div>`;
+    }
+}
+
+function spReveal(){
+    const c = CARDS[current];
+    $('#sp-result').innerHTML = `<div class="sp-answer"><div style="font-weight:bold;color:#2e7d32;margin-bottom:4px;">💡 Gợi ý (ví dụ trên thẻ):</div>${esc(c.example_en)}<div style="color:var(--muted);margin-top:4px;">${esc(c.example_vi)}</div></div>`;
+}
+
+/* =========================================================================
+   FLOW
+   ========================================================================= */
+function buildQueue(){
+    queue = CARDS.map((_,i)=>i);
+    // xáo nhẹ để mỗi lần khác thứ tự (Anki cũng trộn thẻ mới)
+    for(let i=queue.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [queue[i],queue[j]]=[queue[j],queue[i]]; }
+    pos = 0;
+    stats.new = queue.length; stats.due = 0; stats.reviewed = 0;
+}
+
+function render(){
+    const stage = $('#stage');
+    if(pos >= queue.length){
+        stage.innerHTML = `
+        <div class="card flip" style="text-align:center;padding:50px 24px;">
+            <div style="font-size:56px;">🎉</div>
+            <h2 style="color:var(--ink);margin:14px 0 6px;">Hoàn tất buổi ôn!</h2>
+            <p style="color:var(--muted);">Bạn đã ôn xong ${stats.reviewed} thẻ trong bộ từ vựng.</p>
+            <button class="show-answer-btn" onclick="startReview()" style="min-width:0;font-size:16px;padding:13px 30px;">🔁 Ôn lại bộ này</button>
+        </div>`;
+        $('#progress').style.display='none';
+        $('#statsbar').style.display='none';
+        return;
+    }
+    current = queue[pos];
+    flipped = false;
+    readingAnswered = {};
+    $('#statsbar').style.display='flex';
+    $('#progress').style.display='block';
+    $('#deck-name').textContent = DECK_NAME;
+    $('#stat-new').textContent = `🆕 Mới: ${queue.length - pos}`;
+    $('#stat-due').textContent = `🔁 Đã ôn: ${stats.reviewed}`;
+    updateProgress();
+    stage.innerHTML = renderFront(CARDS[current]);
+    bindFront();
+}
+
+function updateProgress(){
+    $('#progress-fill').style.width = (stats.reviewed / queue.length * 100) + '%';
+    $('#progress-count').textContent = `${stats.reviewed} / ${queue.length}`;
+    $('#progress-pct').textContent = Math.round(stats.reviewed/queue.length*100) + '%';
+}
+
+function bindFront(){
+    const btn = $('#showAnswerBtn');
+    btn.onclick = flip;
+    const input = $('#spellCheckInput');
+    input.addEventListener('keydown', e=>{
+        if(e.key === 'Enter'){ e.preventDefault(); flip(); }
+    });
+    input.focus();
+}
+
+function flip(){
+    if(flipped) return;
+    flipped = true;
+    const input = $('#spellCheckInput');
+    let guess = input ? input.value.trim() : '';
+    const card = CARDS[current];
+    $('#stage').innerHTML = renderBack(card);
+    bindTabs();
+    spRenderLevels(); spRenderTask();
+    if(guess){
+        // kiểm tra chính tả
+        const norm = s => s.toLowerCase().replace(/\s+/g,' ').trim();
+        const g = norm(guess), a = norm(card.word);
+        const close = g === a || (g.length>1 && a.includes(g)) || (a.length>1 && g.includes(a));
+        const result = close
+            ? `<div class="spell-result ok">✅ Chính xác! Bạn đã viết đúng từ "${esc(card.word)}".</div>`
+            : `<div class="spell-result bad">✏️ Bạn viết "${esc(guess)}" — từ đúng là "${esc(card.word)}".</div>`;
+        const wordSection = $('#stage .word-section');
+        if(wordSection) wordSection.insertAdjacentHTML('afterend', result);
+    }
+    window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function bindTabs(){
+    document.querySelectorAll('.tab-link').forEach(btn=>{
+        btn.onclick = ()=>{
+            document.querySelectorAll('.tab-link').forEach(b=>b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+            btn.classList.add('active');
+            const t = document.getElementById(btn.dataset.tab);
+            if(t) t.classList.add('active');
+        };
+    });
+}
+
+function rate(r){
+    stats.reviewed++;
+    pos++;
+    const msg = {again:'🔁 Sẽ gặp lại sau 1 phút', hard:'🤔 Sẽ gặp lại sau 6 phút', good:'😊 Sẽ gặp lại sau 10 phút', easy:'🚀 Sẽ gặp lại sau 4 ngày'}[r];
+    toast(msg);
+    render();
+}
+
+function startReview(){
+    buildQueue();
+    render();
+}
+
+/* =========================================================================
+   KEYBOARD + GLOBAL
+   ========================================================================= */
+document.addEventListener('keydown', e=>{
+    if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if(e.key === ' ' || e.key === 'Enter'){
+        e.preventDefault();
+        if(!flipped && $('#showAnswerBtn')) flip();
+    } else if(flipped){
+        const map = {'1':'again','2':'hard','3':'good','4':'easy'};
+        if(map[e.key]) rate(map[e.key]);
+    }
+});
+
+$('#night-btn').onclick = function(){
+    document.body.classList.toggle('night');
+    this.textContent = document.body.classList.contains('night') ? '☀️' : '🌙';
+};
+
+/* =========================================================================
+   START
+   ========================================================================= */
+startReview();
+</script>
+</body>
+</html>

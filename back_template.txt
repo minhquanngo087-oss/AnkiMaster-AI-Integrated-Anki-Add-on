@@ -1,0 +1,4011 @@
+<div class="card-container">
+    <div class="word-section">
+        <div class="word-and-tts">
+            <div class="word">{{Word}}</div>
+            <button class="tts-btn gemini-btn" onclick="speakWithGemini('{{Word}}', event)" title="Gemini AI (Thông minh)">🔊</button>
+            <button class="tts-btn edge-btn" onclick="speakWithEdgeReal('{{Word}}', event)" title="Microsoft Edge (Nhanh & Tự nhiên)">⚡</button>
+        </div>
+        <div class="ipa">{{IPA}}</div>
+        {{#StrokeCount}}
+        <div class="stroke-count" onclick="openStrokeAnimationModal()">✍️ {{StrokeCount}} nét</div>
+        {{/StrokeCount}}
+        <div class="pos-badge">{{PartOfSpeech}}</div>
+    </div>
+<div style='font-family: "Arial"; font-size: 20px;'>{{Audio}}</div>
+    
+    <!-- ==================== KẾT QUẢ KIỂM TRA CHÍNH TẢ ==================== -->
+    <div class="spell-check-result-container">
+        <div class="spell-check-title">✏️ Kết quả kiểm tra chính tả</div>
+        <div class="spell-check-result" id="spellCheckResult"></div>
+        <div class="spell-check-hint" id="spellCheckHint"></div>
+    </div>
+
+    <div class="content-section">
+        <div class="image-container">{{Image}}</div>
+        <div class="definition-en">📖 {{Definition_EN}}</div>
+        <div class="definition-vi">{{Definition_VI}}</div>
+    </div>
+
+    <!-- ==================== THẺ NHẸ: ẨN TAB TRỐNG + NÚT ĐIỀN ĐẦY ĐỦ ==================== -->
+    <!-- Mỗi tab có dữ liệu khi ít nhất 1 field của nó có nội dung (ô nào rỗng thì JS ẩn tab đó) -->
+    <div id="tab-has-data" style="display: none;">
+        <span data-tab="ViDu">{{#Example_EN}}1{{/Example_EN}}{{#Exercises}}1{{/Exercises}}</span>
+        <span data-tab="BoSung">{{#Synonyms}}1{{/Synonyms}}{{#Antonyms}}1{{/Antonyms}}{{#OtherMeaning}}1{{/OtherMeaning}}{{#Etymology}}1{{/Etymology}}{{#Context}}1{{/Context}}</span>
+        <span data-tab="MoRong">{{#WordFamily}}1{{/WordFamily}}{{#Collocations}}1{{/Collocations}}{{#PhrasalVerbs}}1{{/PhrasalVerbs}}{{#Idioms}}1{{/Idioms}}{{#UsagePatterns}}1{{/UsagePatterns}}</span>
+        <span data-tab="KhuyenNghi">{{#Recommendation}}1{{/Recommendation}}{{#GrammarNotes}}1{{/GrammarNotes}}</span>
+        <span data-tab="ApDung">{{#Reading}}1{{/Reading}}</span>
+    </div>
+    <div id="lite-banner" class="lite-banner" style="display: none;">
+        <div class="lite-banner-text">Muốn có thêm ảnh, ví dụ, bài đọc, bài tập vui lòng bấm ✨</div>
+        <button type="button" class="lite-fill-btn tappable" id="lite-fill-btn" onclick="liteFillFull()">✨ Thêm chi tiết</button>
+        <div class="lite-note" id="lite-note"></div>
+    </div>
+
+    <!-- ==================== CÂU CHUYỆN CHỮ HÁN ==================== -->
+    <div id="chinese-story-container" class="chinese-story-section" style="display: none;">
+        <div class="story-title">📖 Câu chuyện chữ Hán</div>
+        <div class="story-content" id="chinese-story-content"></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-link active" onclick="openTab(event, 'ViDu')">💡 Ví dụ</button>
+        <button class="tab-link" onclick="openTab(event, 'BoSung')">➕ Bổ sung</button>
+        <button class="tab-link" onclick="openTab(event, 'MoRong')">🚀 Mở rộng</button>
+        <button class="tab-link" onclick="openTab(event, 'KhuyenNghi')">⭐ Khuyến nghị</button>
+        <button class="tab-link" onclick="openTab(event, 'LuyenCau')">✍️ Luyện câu</button>
+        <button class="tab-link" onclick="openTab(event, 'ApDung')">📝 Áp dụng</button>
+        {{#Radicals}}<button class="tab-link" onclick="openTab(event, 'Radicals')">🖌️ Bộ</button>{{/Radicals}}
+    </div>
+
+    <div id="ViDu" class="tab-content" style="display: block;">
+        <div class="tab-item example-en">
+            <div class="item-title">Ví dụ</div>
+            <div class="example-with-tts">
+                <div class="item-content" id="example-hanzi"></div>
+                <button class="tts-btn gemini-btn" id="example-tts-btn" onclick="speakExampleGemini(event)">🔊</button>
+                <button class="tts-btn edge-btn" onclick="speakExampleEdge(event)">⚡</button>
+            </div>
+        </div>
+        <div class="tab-item example-vi">
+            <div class="item-title">Nghĩa ví dụ</div>
+            <div class="item-content">{{Example_VI}}</div>
+            <div class="item-content-pinyin" id="example-pinyin"></div>
+        </div>
+        <button class="toggle-section-btn" onclick="toggleSection('exercises-wrapper')">📝 Xem bài tập vận dụng ▼</button>
+        <div id="exercises-wrapper" class="collapsible-section" style="display: none;">
+            <div id="exercises-container"></div>
+        </div>
+    </div>
+
+    <div id="BoSung" class="tab-content">
+        <div id="synonyms-container"></div>
+        <div id="antonyms-container"></div>
+{{#Context}}
+<div class="context-section">
+    <div class="context-title">🎯 Ngữ cảnh được cung cấp:</div>
+    <div class="context-content">{{Context}}</div>
+    <div class="context-language" id="context-language-indicator" style="display: none;"></div>
+</div>
+{{/Context}}
+                <div id="other-meaning-container" class="tab-item-group other-meaning-section" style="display: none;">
+    <div class="group-title">🔤 Các nghĩa khác</div>
+    <div class="other-meaning-list" id="other-meaning-list"></div>
+</div>
+        <div id="etymology-container"></div>
+                
+        <!-- ==================== 3 VÍ DỤ GỐC TỪ ==================== -->
+        <div id="etymology-examples-container" class="tab-item-group etymology-examples" style="display: none;">
+            <div class="group-title">📝 Các từ cùng gốc</div>
+            <div class="etymology-examples-list" id="etymology-examples-list"></div>
+        </div>
+    </div>
+
+    <div id="MoRong" class="tab-content">
+        <div id="wordfamily-container"></div>
+        <div id="collocations-container"></div>
+        <div id="phrasalverbs-container"></div>
+        <div id="idioms-container"></div>
+        <div id="usage-patterns-container"></div>
+    </div>
+
+    <div id="KhuyenNghi" class="tab-content">
+        <div id="recommendation-container"></div>
+        <div id="grammar-notes-container"></div>
+    </div>
+
+
+    <!-- ==================== TAB LUYỆN CÂU THEO BẬC ==================== -->
+<div id="LuyenCau" class="tab-content">
+    <div class="sp-container" id="sp-container">
+        <div class="sp-title">✍️ Luyện câu với "<span class="practice-word">{{Word}}</span>"</div>
+        <div class="sp-levels" id="sp-levels"></div>
+        <div class="sp-memory" id="sp-memory" style="display: none;"></div>
+        <div class="sp-task" id="sp-task"></div>
+        <textarea id="sp-input" class="sp-input tappable" rows="3" placeholder="Viết câu trả lời của bạn ở đây..." autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"></textarea>
+        <div class="sp-actions">
+            <button type="button" class="sp-btn sp-btn-new" id="sp-btn-new" onclick="spNewTask()">🎲 Đề mới</button>
+            <button type="button" class="sp-btn sp-btn-check" id="sp-btn-check" onclick="spCheck()">✅ Chấm</button>
+            <button type="button" class="sp-btn sp-btn-reveal" id="sp-btn-reveal" onclick="spReveal()">👀 Xem đáp án</button>
+        </div>
+        <div class="sp-status" id="sp-status" style="display: none;"></div>
+        <div class="sp-result" id="sp-result"></div>
+    </div>
+</div>
+
+    <!-- ==================== TAB ÁP DỤNG: ĐỌC HIỂU + TỪ VỰNG TRONG BÀI ==================== -->
+<div id="ApDung" class="tab-content">
+    <div class="rd-container" id="rd-container">
+        <div id="rd-reading"></div>
+        <div id="rd-questions"></div>
+        <div class="rd-vocab" id="rd-vocab">
+            <div class="rd-vocab-head">
+                <span>📚 Từ vựng trong bài</span>
+                <button type="button" class="rd-vocab-btn" id="rd-vocab-btn" onclick="rdCreateVocab()">✨ Tạo từ vựng</button>
+            </div>
+            <div id="rd-vocab-list"></div>
+        </div>
+    </div>
+    <div id="rd-vocab-field" style="display: none;">{{Reading_Vocabulary}}</div>
+    <div id="rd-struct-field" style="display: none;">{{Reading_Structures}}</div>
+</div>
+
+    <!-- ==================== TAB BỘ ==================== -->
+    <div id="Radicals" class="tab-content">
+        <div id="radicals-container"></div>
+    </div>
+
+<!-- Hidden data holders -->
+<div id="example-en-data" style="display: none;">{{Example_EN}}</div>
+<div id="user-sentence-data" style="display: none;">{{UserSentence}}</div>
+
+<div id="stroke-order-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" onclick="closeStrokeAnimationModal()">&times;</span>
+        <h2 id="modal-title">Thứ tự nét vẽ</h2>
+        <div id="stroke-order-container"></div>
+    </div>
+</div>
+
+<div id="json-data" style="display: none;">
+    <div id="reading-data">{{Reading}}</div>
+    <div id="synonyms-data">{{Synonyms}}</div>
+    <div id="antonyms-data">{{Antonyms}}</div>
+    <div id="wordfamily-data">{{WordFamily}}</div>
+    <div id="collocations-data">{{Collocations}}</div>
+    <div id="phrasalverbs-data">{{PhrasalVerbs}}</div>
+    <div id="idioms-data">{{Idioms}}</div>
+    <div id="recommendation-data">{{Recommendation}}</div>
+    <div id="grammar-notes-data">{{GrammarNotes}}</div>
+    <div id="usage-patterns-data">{{UsagePatterns}}</div>
+    <div id="etymology-data">{{Etymology}}</div>
+    <div id="radicals-data">{{Radicals}}</div>
+    <div id="stroke-count-char-data">{{StrokeCountChar}}</div>
+    <div id="exercises-data">{{Exercises}}</div>
+    <div id="example-en-text-data">{{Example_EN_Text}}</div>
+    <div id="other-meaning-data">{{OtherMeaning}}</div>
+    <div id="context-data">{{Context}}</div>
+</div>
+
+<br><hr><br>
+
+<button class="toggle-section-btn" onclick="toggleSection('google-search-wrapper')" style="margin-bottom: 10px;">🔍 Tìm kiếm Google ▼</button>
+<div id="google-search-wrapper" class="collapsible-section" style="display: none;">
+    <form action="https://www.google.com/search" method="GET" target="_blank">
+        <input type="text" name="q" class="tappable" placeholder="Tìm kiếm trên Google..." style="width: 80%; padding: 8px;">
+        <input type="submit" value="Tìm kiếm" style="padding: 8px;">
+    </form>
+</div>
+
+<!-- =============== TAB LOCK: MODAL =============== -->
+<div id="gem-password-modal" aria-modal="true" role="dialog" style="display: none;">
+    <div class="modal-content">
+        <h3 id="gem-password-title">🔐 MỞ KHOÁ</h3>
+        <p id="gem-password-message">Nhập mật khẩu để mở tab:</p>
+        <input type="password" id="gem-password-input" class="tappable" placeholder="Nhập mật khẩu..." maxlength="8" />
+        <div id="auto-unlock-feedback" class="auto-unlock-feedback">✅ Đúng mật khẩu, đang mở khoá…</div>
+        <div id="password-error" class="password-error">❌ Mật khẩu không đúng!</div>
+        <div class="modal-buttons">
+            <button id="gem-password-cancel">Hủy</button>
+            <button id="gem-password-confirm">Xác nhận</button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ==================== TỐI ƯU MOBILE TOÀN DIỆN ==================== */
+@media (max-width: 768px) {
+    /* Ngăn tràn ngang toàn bộ card trên điện thoại */
+    html, body {
+        max-width: 100%;
+        overflow-x: hidden;
+        margin: 0;
+        padding: 0;
+    }
+
+    .card-container {
+        padding: 10px !important;
+        box-sizing: border-box;
+    }
+
+    .content-section,
+    .word-section {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .image-container img,
+    .image-container iframe {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+
+    .definition-en,
+    .definition-vi {
+        font-size: 15px !important;
+        line-height: 1.5 !important;
+    }
+
+    .tab-content {
+        padding: 10px !important;
+        box-sizing: border-box;
+        max-width: 100%;
+    }
+
+    /* Tối ưu cho Tab Luyện câu */
+    .sp-container {
+        padding: 10px !important;
+        margin: 8px 0 !important;
+    }
+
+    .sp-actions {
+        flex-direction: column;
+    }
+
+    .sp-btn {
+        width: 100%;
+    }
+
+    .sp-input {
+        min-height: 110px;
+        font-size: 17px;          /* >= 16px để iPhone không tự phóng to khi chạm vào */
+        touch-action: manipulation;
+    }
+
+    /* Tối ưu cho Tab Áp Dụng */
+    .rd-container {
+        padding: 10px !important;
+        margin: 8px 0 !important;
+    }
+
+    .rd-passage {
+        padding: 12px !important;
+    }
+
+    /* Tối ưu cho Tab Bộ */
+    .character-analysis {
+        padding: 10px !important;
+        margin: 8px 0 !important;
+    }
+    
+    .analysis-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 6px;
+    }
+    
+    .char-stroke-count {
+        margin-top: 4px !important;
+        font-size: 14px !important;
+    }
+}
+
+/* ==================== LOADING ANIMATIONS ==================== */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ==================== STYLE CHO VÍ DỤ GỐC TỪ ==================== */
+.etymology-examples {
+    margin-top: 20px;
+}
+
+.etymology-example-item {
+    padding: 12px;
+    margin: 10px 0;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #f9f9f9;
+}
+
+.etymology-example-word {
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+.etymology-example-explanation {
+    font-style: italic;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.etymology-example-sentence {
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.etymology-example-translation {
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+/* Các style hiện có giữ nguyên */
+.word-and-tts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.example-with-tts{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;}
+.tts-btn{cursor:pointer;background:#4CAF50;border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;transition:.2s;font-size:14px;color:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2);}
+.tts-btn:hover{background:#45a049;transform:scale(1.1);box-shadow:0 4px 8px rgba(0,0,0,.3);}
+.tts-btn-small{cursor:pointer;background:#2196F3;border:none;border-radius:4px;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;margin-left:8px;font-size:10px;color:#fff;transition:.2s;}
+.tts-btn-small:hover{background:#1976D2;transform:scale(1.1);}
+.tts-btn.playing,.tts-btn-small.playing{background:#ff9800;animation:pulse 1s infinite;}
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
+
+/* Story */
+.chinese-story-section{margin:20px 0;padding:15px;border:1px solid #e0e0e0;border-radius:8px;background:#f9f9f9;box-shadow:0 2px 4px rgba(0,0,0,.1);}
+.story-title{font-weight:bold;margin-bottom:15px;color:#2c3e50;font-size:1.1em;border-bottom:2px solid #3498db;padding-bottom:5px;}
+.character-story{margin-bottom:15px;padding:12px;background:#fff;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.1);}
+.story-character{font-size:24px;font-weight:bold;color:#e74c3c;margin-bottom:8px;text-align:center;background:#f8f9fa;padding:8px;border-radius:4px;}
+.story-text{line-height:1.6;color:#2c3e50;font-size:14px;text-align:justify;}
+
+/* Pinyin blocks */
+.item-content-pinyin,.item-list-pinyin{color:#666;font-style:italic;font-size:.9em;margin:5px 0;padding-left:10px;border-left:2px solid #4CAF50;}
+.item-list-pinyin{border-left:2px solid #2196F3;}
+.item-content{font-size:1.1em;line-height:1.4;margin-bottom:5px;}
+.item-list-example{font-size:1.1em;line-height:1.4;margin-bottom:5px;}
+
+/* Recommendation cards */
+.recommend-use{border-left:4px solid #4CAF50;background:#f8fff8;}
+.recommend-avoid{border-left:4px solid #f44336;background:#fff8f8;}
+.learning-tip{border-left:4px solid #FF9800;background:#fffbf0;}
+.memory-aid{border-left:4px solid #9C27B0;background:#faf4ff;}
+.no-recommendation,.no-data,.error{border-left:4px solid #607D8B;background:#f5f5f5;}
+.tab-item{padding:15px;margin:10px 0;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,.1);}
+.item-title{font-weight:bold;margin-bottom:8px;color:#333;}
+.item-content{color:#666;line-height:1.5;}
+
+/* Hanzi writer modal */
+.char-animation-container{margin:15px 0;padding:15px;border:1px solid #ddd;border-radius:8px;background:#f9f9f9;}
+.char-target{margin:10px 0;}
+.char-buttons{display:flex;gap:10px;margin-top:10px;}
+.char-buttons button{padding:5px 10px;background:#4CAF50;color:#fff;border:none;border-radius:4px;cursor:pointer;}
+.fanning-strokes-container{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px;}
+.modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background-color:rgba(0,0,0,.5);}
+.modal-content{background:#fff;margin:5% auto;padding:20px;border:1px solid #888;width:80%;max-width:800px;border-radius:8px;max-height:80vh;overflow-y:auto;}
+.close-button{color:#aaa;float:right;font-size:28px;font-weight:bold;cursor:pointer;}
+.close-button:hover{color:#000;}
+.tab-content{display:none;}
+.tab-link.active{background-color:#4CAF50;color:#fff;}
+
+/* Exercises */
+.exercise-item{border:1px solid #ddd;border-radius:8px;padding:15px;margin:10px 0;background:#f9f9f9;}
+.exercise-item.correct{border-color:#4CAF50;background:#f8fff8;}
+.exercise-item.incorrect{border-color:#f44336;background:#fff8f8;}
+.exercise-input{padding:5px 10px;border:1px solid #ddd;border-radius:4px;margin:0 5px;}
+.check-button,.show-answer-button{padding:5px 10px;margin:5px;border:none;border-radius:4px;cursor:pointer;}
+.check-button{background:#4CAF50;color:#fff;}
+.show-answer-button{background:#2196F3;color:#fff;}
+.exercise-explanation{margin-top:10px;padding:10px;background:#f5f5f5;border-radius:4px;}
+
+/* Spell check */
+.spell-check-result-container{margin:20px 0;padding:15px;border:1px solid #e0e0e0;border-radius:8px;background:#f9f9f9;}
+.spell-check-title{color:#333;margin-bottom:10px;font-size:1.1em;}
+.spell-check-result{font-size:18px;font-weight:bold;padding:10px;border-radius:4px;min-height:40px;display:flex;align-items:center;flex-wrap:wrap;gap:2px;}
+.spell-check-char{padding:2px 1px;border-radius:2px;transition:.2s;}
+.correct-char{color:#4CAF50;background:#f8fff8;}
+.incorrect-char{color:#f44336;background:#fff8f8;text-decoration:underline;}
+.partial-correct{color:#FF9800;background:#fffbf0;}
+.spell-check-hint{margin-top:10px;font-size:14px;color:#666;font-style:italic;}
+
+/* =============== CSS CHO TAB BỘ =============== */
+.character-analysis {
+    margin: 20px 0;
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    background: #f9f9f9;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.analysis-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #3498db;
+}
+
+.analysis-title {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 1.3em;
+}
+
+.analysis-char {
+    color: #e74c3c;
+    font-size: 1.5em;
+    font-weight: bold;
+    margin: 0 5px;
+}
+
+.char-stroke-count {
+    background: #e3f2fd;
+    color: #1565c0;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 1px solid #bbdefb;
+}
+
+.char-stroke-count:hover {
+    background: #bbdefb;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.character-construction {
+    margin-bottom: 15px;
+}
+
+.construction-title {
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 8px;
+    font-size: 1.1em;
+}
+
+.stroke-breakdown {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #4CAF50;
+    line-height: 1.6;
+    color: #333;
+}
+
+.components-list {
+    margin: 15px 0;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+.component-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    margin: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.component-item:last-child {
+    border-bottom: none;
+}
+
+.component-char {
+    font-size: 24px;
+    font-weight: bold;
+    color: #e74c3c;
+    min-width: 40px;
+    text-align: center;
+    margin-right: 15px;
+    background: #f8f9fa;
+    padding: 8px;
+    border-radius: 6px;
+    border: 2px solid #ffcdd2;
+}
+
+.component-details {
+    flex: 1;
+}
+
+.component-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.component-pinyin {
+    color: #666;
+    font-style: italic;
+    margin-right: 10px;
+    font-size: 0.9em;
+}
+
+.component-role {
+    font-size: 0.8em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: bold;
+}
+
+.component-role.semantic {
+    background: #e8f5e8;
+    color: #2e7d32;
+    border: 1px solid #c8e6c9;
+}
+
+.component-role.phonetic {
+    background: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #bbdefb;
+}
+
+.component-role.other {
+    background: #f3e5f5;
+    color: #7b1fa2;
+    border: 1px solid #e1bee7;
+}
+
+.component-meaning {
+    color: #555;
+    line-height: 1.5;
+    font-size: 0.95em;
+}
+
+.character-meaning {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.meaning-title {
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 8px;
+    font-size: 1.1em;
+}
+
+.meaning-content {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #FF9800;
+    line-height: 1.6;
+    color: #333;
+}
+
+.no-radicals-message {
+    text-align: center;
+    padding: 30px;
+    color: #666;
+    font-style: italic;
+    background: #f5f5f5;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+/* =============== TAB LOCK: CSS =============== */
+.gem-sec-wrap{position:relative}
+.gem-sec-locked{
+    filter:blur(6px) !important;
+    -webkit-filter:blur(6px) !important;
+    pointer-events:none !important;
+    user-select:none !important;
+    -webkit-user-select:none !important;
+}
+.gem-sec-overlay{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.85);backdrop-filter:blur(2px);
+    -webkit-backdrop-filter:blur(2px);
+    font-weight:700;color:#d32f2f;text-align:center;border-radius:10px;z-index:5;
+    padding:20px;box-sizing:border-box;
+    font-size:16px;line-height:1.4;
+}
+
+/* Icon trên tab */
+.tab-link.locked::after{content:" 🔒";opacity:.8}
+.tab-link.unlocked::after{content:" 🔓";opacity:.8}
+
+/* Nút nổi đóng/mở - TỐI ƯU CHO ĐIỆN THOẠI */
+#gem-lock-toggle-btn{
+    position:fixed;right:15px;bottom:15px;z-index:9999;border:0;border-radius:50px;
+    padding:14px 18px;background:#ef5350;color:#fff;font-weight:700;font-size:14px;
+    box-shadow:0 6px 20px rgba(0,0,0,.25);cursor:pointer;transition:.2s;
+    min-width:120px;text-align:center;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
+}
+#gem-lock-toggle-btn.gem-open{background:#22c55e}
+#gem-lock-toggle-btn:active{transform:scale(0.96)}
+
+/* Modal mật khẩu - TỐI ƯU CHO ĐIỆN THOẠI */
+#gem-password-modal{
+    display:none;position:fixed;inset:0;z-index:10000;
+    background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;
+    padding:20px;box-sizing:border-box;
+}
+#gem-password-modal .modal-content{
+    width:100%;max-width:400px;background:#fff;border-radius:16px;padding:24px;
+    box-shadow:0 20px 40px rgba(0,0,0,.3);text-align:center;
+}
+#gem-password-modal h3{margin:0 0 12px;font-size:20px;color:#333;}
+#gem-password-modal p{margin:0 0 20px;color:#666;font-size:16px;line-height:1.4;}
+#gem-password-input{
+    width:100%;padding:16px;border:2px solid #ddd;border-radius:12px;font-size:18px;
+    text-align:center;letter-spacing:2px;box-sizing:border-box;
+    -webkit-appearance:none;
+}
+.modal-buttons{display:flex;gap:12px;margin-top:20px}
+.modal-buttons button{
+    flex:1;border:0;border-radius:12px;padding:14px;font-weight:700;cursor:pointer;
+    font-size:16px;-webkit-tap-highlight-color:transparent;
+}
+#gem-password-cancel{background:#ef4444;color:#fff}
+#gem-password-confirm{background:#22c55e;color:#fff}
+.auto-unlock-feedback{display:none;margin-top:12px;color:#16a34a;font-weight:700;font-size:14px;}
+.auto-unlock-feedback.show{display:block}
+.password-error{display:none;margin-top:12px;color:#ef4444;font-weight:700;font-size:14px;}
+.password-error.show{display:block}
+
+/* Tối ưu tab cho điện thoại */
+.tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px;
+}
+.tab-link {
+    flex: 1;
+    min-width: 120px;
+    padding: 12px 8px;
+    font-size: 14px;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.practice-word {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+/* ==================== THẺ NHẸ ==================== */
+.lite-banner{margin:12px 0;padding:10px 12px;border-radius:10px;background:#fff8e1;border:1px dashed #f0b429;text-align:center;font-size:14px;color:#5d4037;}
+.lite-banner-text{margin-bottom:8px;}
+.lite-fill-btn{padding:9px 18px;border:none;border-radius:20px;background:#7e57c2;color:#fff;font-size:14px;font-weight:bold;cursor:pointer;}
+.lite-fill-btn:disabled{opacity:.7;cursor:default;}
+.lite-note{margin-top:6px;font-size:13px;color:#6d4c41;}
+.nightMode .lite-banner,.night_mode .lite-banner{background:#3e3420;border-color:#a1887f;color:#ffe0b2;}
+.nightMode .lite-note,.night_mode .lite-note{color:#ffcc80;}
+
+/* ==================== TAB ÁP DỤNG: ĐỌC HIỂU ==================== */
+.rd-container{padding:16px;background:#f8f9fa;border-radius:10px;margin:15px 0;}
+.rd-passage{position:relative;background:#fff;border-radius:8px;padding:14px 16px;border-left:4px solid #3498db;}
+.rd-title{font-weight:bold;font-size:1.1em;color:#2c3e50;margin-bottom:8px;}
+.rd-text{line-height:1.7;font-size:1.05em;color:#333;text-align:left;}
+.rd-key{background:#fff3cd;color:#c0392b;font-weight:bold;border-radius:3px;padding:0 2px;}
+.rd-term{border-bottom:2px dotted #9C27B0;cursor:pointer;}
+.rd-term:hover,.rd-term:active{background:#f3e5f5;}
+.rd-pop{position:absolute;z-index:20;max-width:260px;background:#4a148c;color:#fff;border-radius:8px;padding:8px 10px;font-size:14px;line-height:1.4;box-shadow:0 4px 12px rgba(0,0,0,.25);cursor:pointer;}
+.rd-pop .rd-pos{color:#e1bee7;}
+.rd-toggle{padding:6px 12px;font-size:13px;margin:8px 0 0;}
+.rd-translation{background:#e8f5e9;border-radius:8px;padding:10px 12px;margin-top:6px;color:#33691e;line-height:1.6;}
+.rd-section-title,.rd-vocab-head{font-weight:bold;color:#2c3e50;margin:16px 0 8px;}
+.rd-vocab-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.rd-q{background:#fff;border-radius:8px;padding:10px 12px;margin-bottom:8px;}
+.rd-q-text{font-weight:bold;color:#333;margin-bottom:6px;}
+.rd-opt{display:block;width:100%;box-sizing:border-box;text-align:left;background:#fafafa;border:1px solid #ddd;border-radius:6px;padding:8px 10px;margin:4px 0;font-size:14px;cursor:pointer;color:#333;}
+.rd-opt:disabled{cursor:default;}
+.rd-opt.right{background:#e8f5e9;border-color:#4CAF50;color:#1b5e20;font-weight:bold;}
+.rd-opt.wrong{background:#ffebee;border-color:#f44336;color:#b71c1c;}
+.rd-q-fb{font-size:14px;color:#555;margin-top:4px;line-height:1.5;}
+.rd-vocab-btn{background:#9C27B0;color:#fff;border:none;border-radius:16px;padding:6px 14px;font-weight:bold;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+.rd-vocab-btn:disabled{opacity:.7;cursor:not-allowed;}
+.rd-item{background:#fff;border-radius:8px;padding:8px 12px;margin-bottom:6px;}
+.rd-item summary{cursor:pointer;line-height:1.5;}
+.rd-pos{color:#888;font-size:.85em;font-style:italic;}
+.rd-sub-title{font-weight:bold;font-size:13px;color:#1565c0;margin:10px 0 6px;}
+.rd-ex{margin-top:6px;padding-left:10px;border-left:2px solid #ce93d8;font-size:14px;color:#444;line-height:1.5;}
+.rd-ex-vi{color:#2e7d32;}
+.rd-hint,.rd-empty{color:#888;font-size:14px;font-style:italic;}
+.rd-legacy{margin-top:8px;}
+
+/* ==================== TAB LUYỆN CÂU THEO BẬC ==================== */
+.sp-container{padding:16px;background:#f8f9fa;border-radius:10px;margin:15px 0;}
+.sp-title{font-size:1.15em;font-weight:bold;color:#2c3e50;margin-bottom:12px;}
+.sp-levels{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+.sp-level{flex:1;min-width:80px;padding:8px 6px;border:2px solid #c8e6c9;border-radius:8px;background:#fff;color:#2e7d32;font-weight:bold;font-size:14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;-webkit-tap-highlight-color:transparent;}
+.sp-level small{font-weight:normal;font-size:12px;color:#666;}
+.sp-level.active{background:#4CAF50;border-color:#4CAF50;color:#fff;}
+.sp-level.active small{color:#e8f5e9;}
+.sp-level.locked{opacity:.5;cursor:not-allowed;border-color:#ddd;color:#999;}
+.sp-memory{background:#fff;border-left:4px solid #FF9800;border-radius:8px;padding:12px;margin-bottom:12px;}
+.sp-mem-label{font-weight:bold;color:#e65100;font-size:13px;margin-bottom:4px;}
+.sp-mem-text{color:#333;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.sp-mem-mistakes{margin-top:10px;}
+.sp-mem-mistakes ul{margin:4px 0 0;padding-left:20px;color:#c62828;}
+.sp-count{background:#ffebee;border-radius:10px;padding:0 6px;font-size:12px;}
+.sp-task{background:#fff;border-left:4px solid #2196F3;border-radius:8px;padding:12px;margin-bottom:10px;}
+.sp-task-label{font-size:12px;font-weight:bold;color:#1565c0;text-transform:uppercase;margin-bottom:6px;}
+.sp-task-text{font-size:1.05em;color:#2c3e50;line-height:1.5;}
+.sp-task-lead{font-size:14px;color:#1565c0;font-weight:bold;margin-bottom:4px;}
+.sp-phrase{display:inline-block;margin:6px 0 2px;padding:6px 12px;background:#fff3cd;border:2px dashed #FF9800;border-radius:8px;font-size:1.15em;font-weight:bold;color:#e65100;}
+.sp-context{margin-top:6px;font-size:14px;color:#777;line-height:1.5;}
+.sp-phrase-mark{background:#fff3cd;color:#e65100;font-weight:bold;padding:0 2px;border-radius:3px;}
+.sp-task-hint{margin-top:8px;color:#666;font-size:14px;}
+.sp-task-must{margin-top:6px;font-size:13px;color:#555;}
+.sp-task-must code{background:#e3f2fd;border-radius:4px;padding:1px 6px;color:#0d47a1;}
+.sp-muted{color:#888;}
+.sp-input{width:100%;box-sizing:border-box;padding:12px;border:2px solid #e0e0e0;border-radius:8px;font-size:16px;line-height:1.5;font-family:inherit;resize:vertical;min-height:70px;}
+.sp-input:focus{outline:none;border-color:#4CAF50;}
+.sp-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.sp-btn{flex:1;min-width:110px;min-height:44px;padding:10px 14px;border:none;border-radius:8px;font-weight:bold;font-size:15px;cursor:pointer;color:#fff;-webkit-tap-highlight-color:transparent;}
+.sp-btn:disabled{opacity:.5;cursor:not-allowed;}
+.sp-btn-new{background:#2196F3;}
+.sp-btn-check{background:#4CAF50;}
+.sp-btn-reveal{background:#9e9e9e;}
+.sp-btn-next{background:#9C27B0;width:100%;margin-top:12px;}
+.sp-status{align-items:center;gap:10px;margin-top:12px;padding:12px;background:#e3f2fd;border-radius:8px;color:#0d47a1;font-weight:bold;}
+.sp-spinner{width:18px;height:18px;border:3px solid #bbdefb;border-top-color:#1565c0;border-radius:50%;animation:spin 1s linear infinite;display:inline-block;flex-shrink:0;}
+.sp-result{margin-top:12px;}
+.sp-verdict{padding:12px;border-radius:8px;margin-bottom:10px;line-height:1.5;}
+.sp-verdict.pass{background:#e8f5e9;border-left:4px solid #4CAF50;color:#1b5e20;}
+.sp-verdict.fail{background:#fff3e0;border-left:4px solid #FF9800;color:#5d4037;}
+.sp-verdict-head{font-weight:bold;font-size:1.05em;margin-bottom:4px;}
+.sp-unlock{background:#f3e5f5;border-radius:8px;padding:10px;color:#6a1b9a;font-weight:bold;margin-bottom:10px;text-align:center;}
+.sp-issue{background:#fff;border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:4px solid #f44336;}
+.sp-issue.suggestion{border-left-color:#FFC107;}
+.sp-issue-cat{font-size:12px;font-weight:bold;color:#c62828;text-transform:uppercase;margin-bottom:4px;}
+.sp-issue.suggestion .sp-issue-cat{color:#f57f17;}
+.sp-issue-excerpt{margin-bottom:4px;color:#333;}
+.sp-issue-hint{color:#555;font-size:14px;line-height:1.5;}
+.sp-answer{background:#fff;border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:4px solid #4CAF50;}
+.sp-answer-label{font-size:12px;font-weight:bold;color:#2e7d32;margin-bottom:4px;}
+.sp-answer-text{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:1.05em;color:#222;}
+.sp-explain,.sp-upgrade,.sp-mnemonic{background:#fff;border-radius:8px;padding:10px 12px;margin-bottom:8px;line-height:1.5;color:#333;border-left:4px solid #607D8B;}
+.sp-upgrade{border-left-color:#2196F3;}
+.sp-mnemonic{border-left-color:#9C27B0;}
+.sp-usage{background:#fff;border-radius:8px;padding:12px;margin-bottom:8px;border:1px solid #e0e0e0;}
+.sp-usage-head{font-weight:bold;color:#2c3e50;margin-bottom:4px;}
+.sp-usage-sec{margin-top:8px;}
+.sp-usage-title{font-weight:bold;font-size:13px;color:#1565c0;margin-bottom:4px;}
+.sp-usage-item{padding:4px 0;border-bottom:1px dashed #eee;font-size:14px;line-height:1.5;}
+.sp-usage-ex{color:#666;font-style:italic;font-size:13px;}
+
+/* Thông báo nổi dùng chung (luyện câu, tạo từ vựng, bài tập dịch) */
+.practice-toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);max-width:90%;box-sizing:border-box;z-index:10001;padding:12px 16px;border-radius:10px;font-weight:bold;box-shadow:0 6px 20px rgba(0,0,0,.2);text-align:center;white-space:pre-line;}
+.toast-info{background:#e3f2fd;color:#1565c0;}
+.toast-success{background:#e8f5e9;color:#2e7d32;}
+.toast-error{background:#ffebee;color:#c62828;}
+.toast-loading{background:#fff3e0;color:#ef6c00;}
+
+/* ==================== COLLAPSIBLE SECTIONS ==================== */
+.toggle-section-btn {
+    display: block;
+    width: 100%;
+    padding: 10px 16px;
+    margin: 10px 0;
+    background: #e3f2fd;
+    color: #1565c0;
+    border: 2px solid #bbdefb;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+}
+.toggle-section-btn:hover {
+    background: #bbdefb;
+    border-color: #90caf9;
+}
+.toggle-section-btn:active {
+    transform: scale(0.98);
+}
+.toggle-section-btn.expanded {
+    background: #c8e6c9;
+    color: #2e7d32;
+    border-color: #a5d6a7;
+}
+.collapsible-section {
+    transition: all 0.3s ease;
+}
+</style>
+
+<script>
+// ==================== TOGGLE COLLAPSIBLE SECTIONS ====================
+function toggleSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    const btn = section.previousElementSibling;
+    if (section.style.display === 'none' || !section.style.display) {
+        section.style.display = 'block';
+        if (btn && btn.classList.contains('toggle-section-btn')) {
+            btn.classList.add('expanded');
+            btn.textContent = btn.textContent.replace('▼', '▲');
+        }
+    } else {
+        section.style.display = 'none';
+        if (btn && btn.classList.contains('toggle-section-btn')) {
+            btn.classList.remove('expanded');
+            btn.textContent = btn.textContent.replace('▲', '▼');
+        }
+    }
+}
+// ==================== XỬ LÝ MICROSOFT EDGE TTS ====================
+
+function getEdgeVoice(text) {
+    const lang = detectLanguage(text);
+    switch (lang) {
+        case 'zh': return 'zh-CN-XiaoxiaoNeural';
+        case 'ja': return 'ja-JP-NanamiNeural';
+        case 'ko': return 'ko-KR-SunHiNeural';
+        case 'vi': return 'vi-VN-NamMinhNeural';
+        case 'de': return 'de-DE-KatjaNeural';
+        default:   return 'en-GB-RyanNeural'; // Force UK voice
+    }
+}
+
+async function speakWithEdgeReal(text, event) {
+    if (event) event.stopPropagation();
+    
+    const cleanText = text ? text.replace(/[\(\[\{\<][^\)\]\}\>]*[\)\]\}\>]/g, '').trim() : '';
+    if (!cleanText) return;
+
+    let btn = event?.target;
+    if (btn && btn.tagName !== 'BUTTON') btn = btn.closest('button');
+    
+    // --- Cập nhật UI ---
+    if (btn) {
+        document.querySelectorAll('.tts-btn').forEach(b => {
+            b.classList.remove('playing');
+            if (b.classList.contains('gemini-btn')) b.innerHTML = '🔊';
+            if (b.classList.contains('edge-btn')) b.innerHTML = '⚡';
+        });
+        
+        btn.classList.add('playing');
+        btn.innerHTML = '⏹️'; // Icon Stop khi đang đọc (theo code mẫu)
+    }
+
+    // --- Dừng các luồng âm thanh cũ ---
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    if (typeof audioCtx !== 'undefined' && audioCtx && audioCtx.state === 'running') {
+        try { audioCtx.close(); } catch(e){}
+    }
+
+    if (!window.speechSynthesis) return;
+
+    // --- Web Speech API Logic (Thay thế Fetch Edge API để chạy được trên Mobile) ---
+    const u = new SpeechSynthesisUtterance(cleanText);
+    
+    // Phát hiện ngôn ngữ (dựa theo logic code mẫu)
+    const isChinese = /[\u4e00-\u9fff\u3400-\u4dbf]/.test(cleanText);
+    const lang = isChinese ? 'zh' : 'en';
+
+    // Cấu hình giọng đọc
+    if(lang === 'zh'){
+        u.lang = 'zh-CN';
+        u.rate = 0.8;
+        u.pitch = 1.0;
+    } else {
+        u.lang = 'en-GB'; // Force UK accent
+        u.rate = 0.9;
+        u.pitch = 1.0;
+    }
+
+    // Hàm phát âm thanh
+    const play = () => {
+        const voices = window.speechSynthesis.getVoices();
+        let v = null;
+        if(lang === 'zh') {
+            v = voices.find(x => x.lang.includes('zh') || x.lang.includes('cn') || x.name.toLowerCase().includes('chinese'));
+        } else {
+            // Ưu tiên giọng UK (en-GB), fallback sang bất kỳ giọng en nào
+            v = voices.find(x => x.lang === 'en-GB')
+              || voices.find(x => x.lang.startsWith('en-GB'))
+              || voices.find(x => x.name.toLowerCase().includes('british'))
+              || voices.find(x => x.lang.startsWith('en'));
+        }
+        
+        if(v) u.voice = v;
+        window.speechSynthesis.speak(u);
+    };
+
+    // Sự kiện khi đọc xong hoặc lỗi
+    const reset = () => {
+        if (btn) {
+            btn.classList.remove('playing');
+            btn.innerHTML = '⚡'; // Trả về icon tia sét ban đầu
+        }
+    };
+    u.onend = reset;
+    u.onerror = reset;
+
+    // Xử lý trường hợp danh sách giọng đọc chưa tải xong
+    if (window.speechSynthesis.getVoices().length === 0) {
+        window.speechSynthesis.onvoiceschanged = play;
+    } else {
+        play();
+    }
+}
+function speakExampleEdge(event) {
+    const exEl = document.getElementById('example-en-data');
+    if (!exEl) return;
+    
+    let text = exEl.textContent;
+    const mainWord = document.querySelector('.word')?.textContent || '';
+    const isChinese = /[\u4e00-\u9fff]/.test(mainWord);
+    
+    // Xử lý văn bản trước khi đọc (giống logic cũ)
+    if (isChinese) {
+        const {hanzi} = extractHanziAndPinyin(text);
+        text = hanzi;
+    } else {
+        // Loại bỏ nội dung trong ngoặc đơn và khoảng trắng thừa
+        text = text.replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
+    }
+    
+    speakWithEdgeReal(text, event);
+}
+
+/* ==================== CẤU HÌNH GEMINI TTS TỐI ƯU ==================== */
+// ⚠️ CẤU HÌNH: Dán danh sách API Key của bạn vào đây
+var GEMINI_TTS_API_KEYS = `
+AIzaSyAP****Cdis
+AIzaSyDR****vCW0
+AIzaSyAo****aIcg
+AIzaSyAv****9KS0
+AQ.Ab8****V-1Q
+AQ.Ab8****DItw
+AQ.Ab8****B7bw
+`; 
+
+var GEMINI_TTS_VOICE = "Kore"; 
+// Timeout 5 giây (đủ nhanh cho mobile, nếu mạng chậm thì chuyển fallback luôn)
+var GEMINI_TIMEOUT_MS = 5000; 
+
+var audioCtx = null;
+var currentGeminiTTSButton = null;
+var globalTTSAbortController = null; // Dùng để ngắt kết nối mạng
+var globalTimeoutId = null;          // Dùng để đếm giờ
+var ttsKeySnapshot = null;           // Danh sách key cố định trong một lượt đọc (không đổi giữa các lần thử key)
+
+// Hàm lấy danh sách Key
+function getGeminiTTSKeys() {
+    if (!GEMINI_TTS_API_KEYS) return [];
+    const all = GEMINI_TTS_API_KEYS.split(/[\n,;]+/)
+        .map(k => k.trim())
+        .filter(k => k && k.length > 10 && !k.includes("EXAMPLE"));
+    // Bỏ qua key đã biết là bị xoá/thu hồi; nếu tất cả đều bị đánh dấu thì vẫn thử hết
+    const alive = all.filter(k => !geminiIsDeadKey(k));
+    return alive.length ? alive : all;
+}
+
+// Wrapper function
+function speakTextWithEdge(text, event) {
+    if (event) event.stopPropagation();
+    
+    // Reset mọi trạng thái cũ trước khi bắt đầu mới
+    cleanupOldRequests();
+    
+    // Gọi hàm chính
+    speakWithGemini(text, event);
+}
+
+// Hàm dừng TTS
+function stopTTS() {
+    if (audioCtx && audioCtx.state === 'running') {
+        audioCtx.close();
+        audioCtx = null;
+    }
+    if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+    }
+    resetTTSIcons();
+}
+
+// Hàm dọn dẹp các request cũ đang treo
+function cleanupOldRequests() {
+    if (globalTimeoutId) {
+        clearTimeout(globalTimeoutId);
+        globalTimeoutId = null;
+    }
+    if (globalTTSAbortController) {
+        globalTTSAbortController.abort(); // Ngắt kết nối mạng ngay lập tức
+        globalTTSAbortController = null;
+    }
+    // Dừng Web Speech cũ nếu đang nói
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+}
+
+async function speakWithGemini(text, event, keyIndex = 0) {
+    if (!text || !text.trim()) return;
+
+    // ========================================================================
+    // [NEW] LOGIC ÉP BUỘC ĐỌC THEO IPA CHÍNH XÁC
+    // Kiểm tra xem đoạn text đang cần đọc có phải là từ vựng chính không.
+    // Nếu đúng, chèn IPA vào prompt để ép Gemini-2.5-pro-audio đọc chuẩn xác.
+    // ========================================================================
+    let promptForAudio = text;
+    const mainWord = document.querySelector('.word')?.textContent?.trim() || '';
+    
+    if (text.trim() === mainWord) {
+        const currentIpa = document.querySelector('.ipa')?.textContent?.trim() || '';
+        if (currentIpa && !currentIpa.includes('{' + '{')) {
+            // Director-style instruction for TTS: ép giọng UK với IPA
+            promptForAudio = `Say the word '${text}' in a British RP accent, matching this pronunciation: /${currentIpa}/.`;
+        } else {
+            promptForAudio = `Say the word '${text}' in a British RP accent.`;
+        }
+    } else {
+        const isEnglish = detectLanguage(text) === 'en';
+        if (isEnglish) {
+            promptForAudio = `Read this in a British RP accent: ${text}`;
+        }
+    }
+    // ========================================================================
+    
+    // Lần thử đầu lấy danh sách key mới; các lần thử key tiếp theo dùng lại đúng danh sách đó
+    if (keyIndex === 0 || !ttsKeySnapshot) ttsKeySnapshot = getGeminiTTSKeys();
+    var keys = ttsKeySnapshot;
+
+    // Nếu không có key, fallback ngay
+    if (keys.length === 0) {
+        speakWithWebSpeechFallback(text, event);
+        return;
+    }
+
+    var currentKey = keys[keyIndex % keys.length];
+
+    // --- XỬ LÝ GIAO DIỆN (Chỉ lần đầu) ---
+    if (keyIndex === 0) {
+        if (audioCtx && audioCtx.state === 'running') {
+            try { audioCtx.close(); } catch(e){}
+            audioCtx = null;
+        }
+        
+        document.querySelectorAll('.tts-btn, .tts-btn-small').forEach(function(b) {
+            b.classList.remove('playing');
+            if (b.classList.contains('gemini-btn')) b.innerHTML = '🔊';
+            if (b.classList.contains('edge-btn')) b.innerHTML = '⚡';
+            if (!b.classList.contains('gemini-btn') && !b.classList.contains('edge-btn')) b.innerHTML = '🔊';
+        });
+        
+        var button = event?.target || document.querySelector('.tts-btn, .tts-btn-small');
+        if (button && button.tagName !== 'BUTTON') button = button.closest('button');
+        currentGeminiTTSButton = button;
+        
+        if (button) {
+            button.classList.add('playing');
+            button.innerHTML = '⏳';
+        }
+    } else {
+        var button = currentGeminiTTSButton;
+    }
+    
+    // --- CƠ CHẾ TIMEOUT CHẮC CHẮN CHO MOBILE ---
+    let isRequestFinished = false; // Cờ kiểm soát: true = đã xong (thành công hoặc lỗi)
+    const controller = new AbortController();
+    
+    // Thiết lập bộ đếm giờ 5 giây
+    const timeoutId = setTimeout(() => {
+        if (isRequestFinished) return; // Nếu API đã trả về thì thôi
+        
+        console.warn("⚠️ Hết giờ (5s)! Bắt đầu chuyển sang giọng đọc máy...");
+        isRequestFinished = true; // Đánh dấu là xong để chặn API nếu nó trả về sau đó
+        controller.abort();       // Ngắt mạng
+        
+        // Chuyển ngay sang Fallback
+        resetTTSIcons(); 
+        speakWithWebSpeechFallback(text, event);
+    }, 5000); 
+
+    try {
+        console.log(`Đang gọi Gemini TTS (Key #${keyIndex + 1})...`);
+        var url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${currentKey}`;
+        
+        // Xác định languageCode dựa trên ngôn ngữ: en-GB cho tiếng Anh, 
+        // các ngôn ngữ khác dùng locale tương ứng
+        var detectedLang = detectLanguage(text);
+        var ttsLangCode = 'en-GB'; // Mặc định UK English
+        if (detectedLang === 'zh') ttsLangCode = 'zh-CN';
+        else if (detectedLang === 'ja') ttsLangCode = 'ja-JP';
+        else if (detectedLang === 'vi') ttsLangCode = 'vi-VN';
+        else if (detectedLang === 'ko') ttsLangCode = 'ko-KR';
+        
+        var requestBody = {
+            contents: [{parts: [{text: promptForAudio}]}],
+            generationConfig: {
+                responseModalities: ["AUDIO"],
+                speechConfig: {
+                    voiceConfig: { prebuiltVoiceConfig: { voiceName: GEMINI_TTS_VOICE } },
+                    languageCode: ttsLangCode
+                }
+            }
+        };
+        
+        console.log(`🇬🇧 TTS Config: lang=${ttsLangCode}, voice=${GEMINI_TTS_VOICE}`);
+        
+        var response = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(requestBody),
+            signal: controller.signal
+        });
+
+        // Nếu code chạy đến đây tức là chưa bị timeout ngắt
+        if (isRequestFinished) return; // Nếu timeout đã chạy trước đó thì bỏ qua kết quả này
+        clearTimeout(timeoutId);       // Hủy bộ đếm giờ vì đã có kết quả
+
+        if (!response.ok) {
+            // Key bị xoá/thu hồi -> ghi nhớ để lần sau bỏ qua (dùng chung với Luyện câu, Áp dụng)
+            if (response.status === 400) {
+                const err = await geminiReadError(response);
+                if (/API_KEY/.test(err.reason + err.message)) geminiMark('dead', geminiKeyId(currentKey), 24 * 3600 * 1000);
+            }
+            // Nếu lỗi server/limit và còn key -> Thử key tiếp theo
+            if ([429, 500, 503, 403].includes(response.status)) {
+                if (keyIndex < keys.length - 1) {
+                    await speakWithGemini(text, event, keyIndex + 1);
+                    return;
+                }
+            }
+            throw new Error(`Lỗi API: ${response.status}`);
+        }
+
+        var data = await response.json();
+        
+        if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0].inlineData) {
+            var audioBase64 = data.candidates[0].content.parts[0].inlineData.data;
+            
+            // Đánh dấu đã xong để timeout không chạy nữa
+            isRequestFinished = true; 
+            await playPcmAudio(audioBase64, button, text);
+        } else {
+            throw new Error("Không có audio data");
+        }
+
+    } catch (e) {
+        if (isRequestFinished) return; // Nếu timeout đã xử lý rồi thì thôi
+        
+        isRequestFinished = true;
+        clearTimeout(timeoutId);
+        
+        console.error("Gemini TTS Error:", e);
+        
+        // Nếu lỗi mạng (không phải do timeout ngắt) và còn key -> Thử tiếp
+        if (e.name !== 'AbortError' && keyIndex < keys.length - 1) {
+             await speakWithGemini(text, event, keyIndex + 1);
+             return;
+        }
+        
+        // Fallback cuối cùng
+        resetTTSIcons();
+        speakWithWebSpeechFallback(text, event);
+    }
+}
+
+// Hàm giải mã và phát âm thanh PCM
+async function playPcmAudio(base64String, button, originalText) {
+    try {
+        var binaryString = atob(base64String);
+        var len = binaryString.length;
+        var bytes = new Uint8Array(len);
+        for (var i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        var int16Data = new Int16Array(bytes.buffer);
+        var float32Data = new Float32Array(int16Data.length);
+        for (var i = 0; i < int16Data.length; i++) {
+            float32Data[i] = int16Data[i] / 32768.0;
+        }
+
+        if (!audioCtx || audioCtx.state === 'closed') {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        // QUAN TRỌNG: Resume context cho Mobile
+        if (audioCtx.state === 'suspended') {
+            await audioCtx.resume();
+        }
+        
+        var buffer = audioCtx.createBuffer(1, float32Data.length, 24000);
+        buffer.copyToChannel(float32Data, 0);
+        
+        var source = audioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioCtx.destination);
+        
+        source.onended = function() {
+            resetTTSIcons();
+        };
+        
+        if (button) {
+            if (button.classList.contains('gemini-btn')) {
+                button.innerHTML = '🔊';
+            } else if (button.classList.contains('edge-btn')) {
+                button.innerHTML = '⚡';
+            } else {
+                button.innerHTML = '🔊';
+            }
+        }
+        
+        source.start(0);
+        
+    } catch (e) {
+        console.error("Audio Playback Error:", e);
+        resetTTSIcons();
+        speakWithWebSpeechFallback(originalText, null);
+    }
+}
+
+function resetTTSIcons() {
+    document.querySelectorAll('.tts-btn, .tts-btn-small').forEach(function(b) {
+        b.classList.remove('playing');
+        if (b.classList.contains('gemini-btn')) b.innerHTML = '🔊';
+        else if (b.classList.contains('edge-btn')) b.innerHTML = '⚡';
+        else b.innerHTML = '🔊';
+    });
+    currentGeminiTTSButton = null;
+}
+
+// Fallback: Web Speech API (Cực kỳ đơn giản và nhanh)
+function speakWithWebSpeechFallback(text, event) {
+    if (!window.speechSynthesis) return;
+    
+    console.log(">> Running Fallback TTS");
+    
+    // Đảm bảo dừng mọi thứ trước đó
+    window.speechSynthesis.cancel();
+    
+    const u = new SpeechSynthesisUtterance(text);
+    
+    // Cố gắng chọn giọng tốt nhất
+    const lang = detectLanguage(text);
+    if (lang === 'zh') u.lang = 'zh-CN';
+    else if (lang === 'vi') u.lang = 'vi-VN';
+    else if (lang === 'ja') u.lang = 'ja-JP';
+    else {
+        u.lang = 'en-GB'; // Force UK accent
+        // Tìm giọng UK trong danh sách
+        const voices = window.speechSynthesis.getVoices();
+        const ukVoice = voices.find(x => x.lang === 'en-GB')
+                     || voices.find(x => x.lang.startsWith('en-GB'))
+                     || voices.find(x => x.name.toLowerCase().includes('british'));
+        if (ukVoice) u.voice = ukVoice;
+    }
+    
+    u.rate = 0.9;
+    
+    // Hiệu ứng nút
+    var btn = currentGeminiTTSButton;
+    // Nếu không tìm thấy biến toàn cục, tìm lại qua event
+    if (!btn && event && event.target) {
+        btn = event.target.closest('button') || event.target;
+    }
+
+    if (btn) {
+        btn.classList.add('playing');
+        btn.innerHTML = '🗣️'; // Icon khác để biết là fallback
+        
+        u.onstart = function() { 
+            if(btn) btn.innerHTML = '⏹️'; 
+        };
+        u.onend = function() { 
+            if(btn) {
+                btn.classList.remove('playing');
+                if (btn.classList.contains('gemini-btn')) btn.innerHTML = '🔊';
+                else if (btn.classList.contains('edge-btn')) btn.innerHTML = '⚡';
+                else btn.innerHTML = '🔊';
+            }
+        };
+        u.onerror = function() {
+            if(btn) {
+                btn.classList.remove('playing');
+                if (btn.classList.contains('gemini-btn')) btn.innerHTML = '🔊';
+                else if (btn.classList.contains('edge-btn')) btn.innerHTML = '⚡';
+                else btn.innerHTML = '🔊';
+            }
+        };
+    }
+    
+    window.speechSynthesis.speak(u);
+}
+
+function detectLanguage(text) {
+    if (!text) return 'en';
+    if (/[\u4E00-\u9FFF]/.test(text)) return 'zh';
+    if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/.test(text.toLowerCase())) return 'vi';
+    if (/[\u3040-\u309f\u30a0-\u30ff]/.test(text)) return 'ja';
+    return 'en';
+}
+
+// Hàm xử lý đọc văn bản tiếng Trung (CẬP NHẬT)
+function speakChineseText(event, text) {
+    if (event) event.stopPropagation();
+    
+    // THÊM DÒNG NÀY: Ngắt các luồng âm thanh cũ để tránh lỗi trên Mobile/chồng âm
+    if (typeof cleanupOldRequests === 'function') cleanupOldRequests();
+    
+    var cleanText = text;
+    if (text) {
+        // Xóa nội dung trong mọi loại ngoặc
+        cleanText = cleanText.replace(/[\(\[\{\<][^\)\]\}\>]*[\)\]\}\>]/g, '').trim();
+    }
+    
+    if (!cleanText) cleanText = text;
+    
+    speakWithGemini(cleanText, event);
+}
+
+
+/* ==================== HIỂN THỊ CONTEXT TRONG TAB BO SUNG ==================== */
+function displayContextInBoSung() {
+    const contextElement = document.querySelector('.context-content');
+    const languageIndicator = document.getElementById('context-language-indicator');
+    
+    if (!contextElement || !languageIndicator) return;
+    
+    const contextText = contextElement.textContent || contextElement.innerText;
+    if (!contextText.trim()) return;
+    
+    const detectedLang = detectContextLanguage(contextText);
+    const contextCategory = categorizeContext(contextText);
+    
+    // Chỉ hiển thị indicator cho 4 ngôn ngữ được hỗ trợ
+    if (detectedLang && detectedLang !== "Unknown") {
+        let indicatorText = `🌐 Ngôn ngữ context: ${detectedLang}`;
+        if (contextCategory !== 'general') {
+            indicatorText += ` | 📂 Chủ đề: ${getContextCategoryName(contextCategory)}`;
+        }
+        languageIndicator.innerHTML = `<small>${indicatorText}</small>`;
+        languageIndicator.style.display = 'block';
+    } else {
+        languageIndicator.style.display = 'none';
+    }
+}
+
+// Hàm phát hiện ngôn ngữ context - CHỈ 4 NGÔN NGỮ
+function detectContextLanguage(text) {
+    if (!text) return "Unknown";
+    
+    // Japanese
+    if (/[\u3040-\u30ff\u31f0-\u31ff]/.test(text)) return "Japanese";
+    
+    // Chinese
+    if (/[\u4e00-\u9fff]/.test(text)) return "Chinese";
+    
+    // Vietnamese (các ký tự có dấu đặc trưng)
+    if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(text)) 
+        return "Vietnamese";
+    
+    // Mặc định là English
+    return "English";
+}
+
+// Hàm phân loại context trong JavaScript
+function categorizeContext(text) {
+    const textLower = text.toLowerCase();
+    const categories = {
+        'medical': ['y học', 'bệnh viện', 'bác sĩ', 'sức khỏe', 'y tế'],
+        'technology': ['công nghệ', 'máy tính', 'phần mềm', 'lập trình'],
+        'business': ['kinh doanh', 'thương mại', 'công ty', 'doanh nghiệp'],
+        'academic': ['học thuật', 'trường học', 'giáo dục', 'nghiên cứu'],
+        'daily': ['hàng ngày', 'giao tiếp', 'cuộc sống']
+    };
+    
+    for (const [category, keywords] of Object.entries(categories)) {
+        if (keywords.some(keyword => textLower.includes(keyword))) {
+            return category;
+        }
+    }
+    return 'general';
+}
+
+function getContextCategoryName(category) {
+    const names = {
+        'medical': 'Y học',
+        'technology': 'Công nghệ',
+        'business': 'Kinh doanh',
+        'academic': 'Học thuật', 
+        'daily': 'Hàng ngày',
+        'general': 'Chung'
+    };
+    return names[category] || category;
+}
+
+
+/* ==================== CẦU NỐI PYCMD (CHỈ CÓ TRÊN ANKI MÁY TÍNH) ==================== */
+// pycmd gửi lệnh sang add-on Python. AnkiDroid/AnkiMobile không có pycmd: tạo hàm thay thế
+// để các nút không lỗi JS, và báo rõ thay vì trả kết quả giả như trước.
+if (typeof pycmd === 'undefined') {
+    var pycmd = function(cmd) {
+        console.log('pycmd không có trên thiết bị này:', cmd);
+        showPracticeMessage('📵 Tính năng này cần add-on trên Anki máy tính', 'info');
+    };
+    pycmd.isFallback = true;
+}
+
+function hasAnkiBridge() {
+    return typeof pycmd === 'function' && !pycmd.isFallback;
+}
+
+/* ==================== XỬ LÝ 3 VÍ DỤ GỐC TỪ ==================== */
+function renderEtymologyExamples() {
+    const etymologyDataEl = document.getElementById('etymology-data');
+    const examplesContainer = document.getElementById('etymology-examples-container');
+    const examplesList = document.getElementById('etymology-examples-list');
+    
+    if (!etymologyDataEl || !examplesContainer) return;
+    
+    const rawData = etymologyDataEl.textContent.trim();
+    
+    if (!rawData || rawData === '{}' || rawData === '[]') {
+        examplesContainer.style.display = 'none';
+        return;
+    }
+    
+    try {
+        const etymologyData = JSON.parse(rawData);
+        
+        if (etymologyData.examples && Array.isArray(etymologyData.examples) && etymologyData.examples.length > 0) {
+            let examplesHtml = '';
+            
+            etymologyData.examples.forEach((example, index) => {
+                if (example && example.word) {
+                    examplesHtml += `
+                        <div class="etymology-example-item">
+                            <div class="etymology-example-word">${example.word}</div>
+                            ${example.explanation ? `<div class="etymology-example-explanation">${example.explanation}</div>` : ''}
+                            ${example.sentence ? `<div class="etymology-example-sentence">${example.sentence}</div>` : ''}
+                            ${example.translation ? `<div class="etymology-example-translation">${example.translation}</div>` : ''}
+                        </div>
+                    `;
+                }
+            });
+            
+            if (examplesHtml) {
+                examplesList.innerHTML = examplesHtml;
+                examplesContainer.style.display = 'block';
+            } else {
+                examplesContainer.style.display = 'none';
+            }
+        } else {
+            examplesContainer.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Lỗi phân tích dữ liệu etymology examples:', error);
+        examplesContainer.style.display = 'none';
+    }
+}
+
+/* ==================== OTHER MEANINGS ==================== */
+function renderOtherMeanings() {
+    const dataEl = document.getElementById('other-meaning-data');
+    const containerEl = document.getElementById('other-meaning-container');
+    const listEl = document.getElementById('other-meaning-list');
+    
+    if (!(dataEl && containerEl && listEl)) return;
+    
+    const rawData = dataEl.textContent.trim();
+    
+    if (!rawData || rawData === '{}' || rawData === '[]') {
+        containerEl.style.display = 'none';
+        return;
+    }
+    
+    try {
+        const otherMeanings = JSON.parse(rawData);
+        
+        if (Array.isArray(otherMeanings) && otherMeanings.length > 0) {
+            let html = '';
+            
+            otherMeanings.forEach((meaning, index) => {
+                if (meaning && meaning.meaning && meaning.meaning.trim() !== "") {
+                    html += `
+                        <div class="other-meaning-item">
+                            <div class="other-meaning-header">
+                                <span class="other-meaning-index">${index + 1}.</span>
+                                <span class="other-meaning-text">${meaning.meaning}</span>
+                            </div>
+                            ${meaning.context_vi && meaning.context_vi.trim() !== "" ? `
+                                <div class="other-meaning-context">
+                                    <strong>📝 Ngữ cảnh sử dụng:</strong> ${meaning.context_vi}
+                                </div>
+                            ` : ''}
+                            ${meaning.example_en && meaning.example_en.trim() !== "" ? `
+                                <div class="other-meaning-example">
+                                    <strong>💡 Ví dụ:</strong> ${meaning.example_en}
+                                </div>
+                            ` : ''}
+                            ${meaning.example_vi && meaning.example_vi.trim() !== "" ? `
+                                <div class="other-meaning-translation">
+                                    <strong>🌐 Dịch:</strong> ${meaning.example_vi}
+                                </div>
+                            ` : ''}
+                            ${meaning.usage_note_vi && meaning.usage_note_vi.trim() !== "" ? `
+                                <div class="other-meaning-usage">
+                                    <strong>🎯 Ghi chú sử dụng:</strong> ${meaning.usage_note_vi}
+                                </div>
+                            ` : ''}
+                            ${meaning.sources && Array.isArray(meaning.sources) && meaning.sources.length > 0 ? `
+                                <div class="other-meaning-sources">
+                                    <strong>📚 Nguồn tham khảo:</strong> ${meaning.sources.join(', ')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+            });
+            
+            if (html) {
+                listEl.innerHTML = html;
+                containerEl.style.display = 'block';
+                
+                // Hiển thị số lượng nghĩa chính xác
+                const actualCount = otherMeanings.filter(m => m && m.meaning && m.meaning.trim() !== "").length;
+                const titleEl = containerEl.querySelector('.group-title');
+                if (titleEl) {
+                    if (actualCount === 10) {
+                        titleEl.innerHTML = `🔤 10 Nghĩa chính của từ`;
+                    } else {
+                        titleEl.innerHTML = `🔤 ${actualCount} Nghĩa chính của từ`;
+                    }
+                }
+            } else {
+                containerEl.style.display = 'none';
+            }
+        } else {
+            containerEl.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Lỗi phân tích dữ liệu other meanings:', error);
+        containerEl.style.display = 'none';
+    }
+}
+
+
+/* ==================== THÔNG BÁO NỔI DÙNG CHUNG ==================== */
+// Dùng cho luyện câu, tạo từ vựng, bài tập dịch (Python cũng gọi hàm này qua eval)
+function showPracticeMessage(message, type) {
+    type = type || 'info';
+    let toast = document.getElementById('practice-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'practice-toast';
+        toast.onclick = function() { toast.style.display = 'none'; };
+        document.body.appendChild(toast);
+    }
+    toast.className = 'practice-toast toast-' + type;
+    toast.textContent = message;
+    toast.style.display = 'block';
+    clearTimeout(window.__practiceToastTimer);
+    if (type !== 'loading') {
+        window.__practiceToastTimer = setTimeout(function() { toast.style.display = 'none'; }, type === 'error' ? 7000 : 3500);
+    }
+}
+
+/* ==================== GỌI GEMINI DÙNG CHUNG (LUYỆN CÂU, ÁP DỤNG) ==================== */
+// Gọi thẳng từ thẻ nên chạy được cả Anki máy tính lẫn điện thoại (dùng danh sách key GEMINI_TTS_API_KEYS ở trên).
+// Thử lần lượt từng model: lượt miễn phí của Google tính riêng cho từng model trên mỗi project,
+// nên có model dự phòng thì tổng số lượt dùng được nhiều hơn.
+// Mỗi đời model tắt "suy nghĩ" theo cách khác nhau: 2.5 dùng thinkingBudget, 3.x dùng thinkingLevel.
+var GEMINI_TEXT_MODELS = [
+    { model: 'gemini-3.8-flash', thinking: { thinkingLevel: 'low' } },
+    { model: 'gemini-2.5-flash', thinking: { thinkingBudget: 0 } },
+    { model: 'gemini-3.5-flash-lite', thinking: { thinkingLevel: 'low' } },
+    { model: 'gemini-flash-lite-latest', thinking: { thinkingLevel: 'low' } }
+];
+var GEMINI_TEXT_TIMEOUT_MS = 25000;
+var GEMINI_MAX_CALLS = 8;           // tối đa ngần này lần gọi (qua các key/model) cho mỗi yêu cầu
+var GEMINI_HEALTH_KEY = 'gemini_health_v1';
+var geminiKeyStart = 0;
+
+// Ghi nhớ trong máy: key chết (dead), key hết lượt với từng model (block), model đang quá tải (busy)
+// -> lần sau bỏ qua ngay thay vì thử lại từng cái.
+function geminiHealth() {
+    const h = spStoreGet(GEMINI_HEALTH_KEY) || {};
+    return { dead: h.dead || {}, block: h.block || {}, busy: h.busy || {} };
+}
+function geminiKeyId(key) { return key.slice(-8); }
+function geminiMark(kind, id, ms) {
+    const h = geminiHealth(), now = Date.now();
+    h[kind][id] = now + ms;
+    ['dead', 'block', 'busy'].forEach(function(k) {
+        Object.keys(h[k]).forEach(function(x) { if (h[k][x] < now) delete h[k][x]; });
+    });
+    spStoreSet(GEMINI_HEALTH_KEY, h);
+}
+function geminiIsDeadKey(key) { return (geminiHealth().dead[geminiKeyId(key)] || 0) > Date.now(); }
+async function geminiReadError(res) {
+    const j = await res.json().catch(function() { return {}; });
+    const e = j.error || {}, details = e.details || [];
+    const reasons = details.map(function(d) { return d.reason; }).filter(Boolean);
+    const quota = [];
+    details.forEach(function(d) { (d.violations || []).forEach(function(v) { quota.push(v.quotaId || ''); }); });
+    return { status: res.status, reason: reasons[0] || e.status || '', quota: quota.join(' '), message: e.message || '' };
+}
+function geminiFailMessage(stats, calls) {
+    if (!calls) return 'Tất cả key/model đang tạm nghỉ (hết lượt hoặc quá tải). Thử lại sau ít phút.';
+    if (stats.quota && !stats.busy && !stats.other.length) {
+        return 'Đã hết lượt Gemini miễn phí trên các key còn dùng được. Thử lại sau, hoặc thêm key mới tạo ở tài khoản Google khác.';
+    }
+    const parts = [];
+    if (stats.invalid) parts.push(stats.invalid + ' key không còn hợp lệ');
+    if (stats.quota) parts.push(stats.quota + ' lần hết lượt');
+    if (stats.busy) parts.push('model đang quá tải');
+    return 'Không gọi được Gemini (' + parts.concat(stats.other.slice(-2)).join('; ') + ')';
+}
+async function geminiGenerateJson(prompt, schema, temperature) {
+    const keys = getGeminiTTSKeys();
+    if (!keys.length) throw new Error('Chưa có API key trong thẻ (GEMINI_TTS_API_KEYS)');
+    const MINUTE = 60000, HOUR = 60 * MINUTE, DAY = 24 * HOUR;
+    const stats = { invalid: 0, quota: 0, busy: 0, other: [] };
+    const started = Date.now();
+    let calls = 0;
+    outer:
+    for (const m of GEMINI_TEXT_MODELS) {
+        if ((geminiHealth().busy[m.model] || 0) > Date.now()) continue;
+        const generationConfig = { responseMimeType: 'application/json', responseSchema: schema, temperature: temperature };
+        if (m.thinking) generationConfig.thinkingConfig = m.thinking;
+        const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: generationConfig });
+        for (let n = 0; n < keys.length; n++) {
+            const idx = (geminiKeyStart + n) % keys.length, key = keys[idx], kid = geminiKeyId(key);
+            const h = geminiHealth();
+            if ((h.dead[kid] || 0) > Date.now() || (h.block[m.model + '|' + kid] || 0) > Date.now()) continue;
+            if (++calls > GEMINI_MAX_CALLS || Date.now() - started > 45000) break outer;
+            const controller = new AbortController();
+            const timer = setTimeout(function() { controller.abort(); }, GEMINI_TEXT_TIMEOUT_MS);
+            try {
+                const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + m.model + ':generateContent?key=' + encodeURIComponent(key), {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, signal: controller.signal
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
+                    const text = parts.filter(function(p) { return !p.thought; }).map(function(p) { return p.text || ''; }).join('');
+                    if (!text) { stats.other.push(m.model + ': phản hồi trống'); continue; }
+                    geminiKeyStart = idx;
+                    console.log('[Gemini] ' + m.model + ' · key ' + (idx + 1) + ' · ' + (Date.now() - started) + 'ms');
+                    return spParseJson(text);
+                }
+                const err = await geminiReadError(res);
+                console.warn('[Gemini] ' + m.model + ' · key ' + (idx + 1) + ' lỗi ' + err.status + ' ' + err.reason + ': ' + err.message.slice(0, 200));
+                if (err.status === 400 && /API_KEY/.test(err.reason + err.message)) {
+                    stats.invalid++;
+                    geminiMark('dead', kid, DAY);                         // key bị xoá/thu hồi
+                } else if (err.status === 429) {
+                    stats.quota++;
+                    geminiMark('block', m.model + '|' + kid, /PerDay/i.test(err.quota) ? 3 * HOUR : MINUTE);
+                } else if (err.status === 404 || err.status === 403) {
+                    stats.other.push(m.model + ': không dùng được với key ' + (idx + 1));
+                    geminiMark('block', m.model + '|' + kid, err.status === 404 ? 7 * DAY : DAY);
+                } else if (err.status >= 500) {
+                    stats.busy++;
+                    geminiMark('busy', m.model, 10 * MINUTE);             // model quá tải: sang model khác
+                    continue outer;
+                } else {
+                    stats.other.push(m.model + ': HTTP ' + err.status);   // tham số không hợp với model này
+                    continue outer;
+                }
+            } catch (e) {
+                if (e.name !== 'AbortError') throw new Error('Không kết nối được Gemini: ' + e.message + ' (kiểm tra mạng)');
+                stats.other.push(m.model + ': quá ' + (GEMINI_TEXT_TIMEOUT_MS / 1000) + ' giây');
+                continue outer;
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+    }
+    throw new Error(geminiFailMessage(stats, calls));
+}
+
+/* ==================== LUYỆN CÂU THEO BẬC ==================== */
+// Lịch sử luyện (bậc, câu tốt nhất, lỗi hay mắc, thẻ cách dùng) lưu ở localStorage của từng máy,
+// và trên máy tính còn được ghi vào field UserSentence qua pycmd('sp_save:...') để đồng bộ AnkiWeb.
+var SP_MAX_ATTEMPTS = 3;    // sai đến lần thứ này thì hiện đáp án
+var SP_LEVELS = {
+    '1': { name: 'Bậc 1', short: 'Cụm từ' },
+    '2': { name: 'Bậc 2', short: 'Câu đơn' },
+    '3': { name: 'Bậc 3', short: 'Tình huống' },
+    'free': { name: 'Tự do', short: 'Tự đặt câu' }
+};
+var SP_CATEGORY_NAMES = {
+    particle: 'Giới từ / trợ từ', collocation: 'Collocation', grammar: 'Ngữ pháp',
+    phrase: 'Phrasal verb / idiom / cụm cố định', word_choice: 'Chọn từ', spelling: 'Chính tả', task: 'Chưa đúng đề'
+};
+
+var SP_USAGE_ITEM = {
+    type: 'OBJECT',
+    properties: { form: { type: 'STRING' }, note_vi: { type: 'STRING' }, example: { type: 'STRING' } },
+    required: ['form']
+};
+var SP_USAGE_SCHEMA = {
+    type: 'OBJECT',
+    properties: {
+        particles: { type: 'ARRAY', items: SP_USAGE_ITEM },
+        collocations: { type: 'ARRAY', items: SP_USAGE_ITEM },
+        structures: { type: 'ARRAY', items: SP_USAGE_ITEM },
+        phrases: { type: 'ARRAY', items: SP_USAGE_ITEM }
+    },
+    propertyOrdering: ['particles', 'collocations', 'structures', 'phrases']
+};
+var SP_TASK_SCHEMA = {
+    type: 'OBJECT',
+    properties: {
+        task_vi: { type: 'STRING' },
+        phrase_vi: { type: 'STRING' },
+        focus: { type: 'STRING' },
+        focus_hint_vi: { type: 'STRING' },
+        must_use: { type: 'ARRAY', items: { type: 'STRING' } },
+        reference_answers: { type: 'ARRAY', items: { type: 'STRING' } },
+        reference_pinyin: { type: 'STRING' },
+        usage_card: SP_USAGE_SCHEMA,
+        mnemonic_vi: { type: 'STRING' }
+    },
+    required: ['task_vi', 'focus', 'focus_hint_vi', 'must_use', 'reference_answers'],
+    propertyOrdering: ['phrase_vi', 'task_vi', 'focus', 'focus_hint_vi', 'must_use', 'reference_answers', 'reference_pinyin', 'usage_card', 'mnemonic_vi']
+};
+var SP_GRADE_SCHEMA = {
+    type: 'OBJECT',
+    properties: {
+        issues: {
+            type: 'ARRAY',
+            items: {
+                type: 'OBJECT',
+                properties: {
+                    severity: { type: 'STRING' }, category: { type: 'STRING' }, excerpt: { type: 'STRING' },
+                    hint_vi: { type: 'STRING' }, fix: { type: 'STRING' }, explain_vi: { type: 'STRING' },
+                    tag: { type: 'STRING' }, label_vi: { type: 'STRING' }
+                },
+                required: ['severity', 'category', 'hint_vi', 'fix', 'tag', 'label_vi'],
+                propertyOrdering: ['severity', 'category', 'excerpt', 'hint_vi', 'fix', 'explain_vi', 'tag', 'label_vi']
+            }
+        },
+        pass: { type: 'BOOLEAN' },
+        summary_vi: { type: 'STRING' },
+        corrected: { type: 'STRING' },
+        corrected_pinyin: { type: 'STRING' },
+        model_answer: { type: 'STRING' },
+        model_pinyin: { type: 'STRING' },
+        explain_vi: { type: 'STRING' },
+        upgrade_vi: { type: 'STRING' },
+        usage_card: SP_USAGE_SCHEMA,
+        mnemonic_vi: { type: 'STRING' }
+    },
+    required: ['issues', 'pass', 'summary_vi', 'corrected', 'model_answer', 'explain_vi'],
+    propertyOrdering: ['issues', 'pass', 'summary_vi', 'corrected', 'corrected_pinyin', 'model_answer', 'model_pinyin', 'explain_vi', 'upgrade_vi', 'usage_card', 'mnemonic_vi']
+};
+
+var spState = null;
+
+// ---------- Tiện ích ----------
+function spEl(id) { return document.getElementById(id); }
+function spEsc(s) {
+    // AI hay viết dấu gạch dài: đổi sang dấu phẩy cho dễ đọc
+    return String(s == null ? '' : s).replace(/\s*—\s*/g, ', ').replace(/[&<>"']/g, function(c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+}
+function spFmt(s) { return spEsc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>'); }
+function spText(selector) {
+    const el = document.querySelector(selector);
+    return el ? (el.textContent || '').replace(/\s+/g, ' ').trim() : '';
+}
+function spJson(selector) {
+    try { const t = spText(selector); return t ? JSON.parse(t) : null; } catch (e) { return null; }
+}
+function spStoreGet(key) {
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch (e) { return null; }
+}
+function spStoreSet(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* hết chỗ hoặc bị chặn: bỏ qua */ }
+}
+function spIsCurrent(token) { return !!(spState && spState.token === token && spEl('sp-input')); }
+function spSayBtn(text) {
+    return text ? `<button type="button" class="tts-btn-small" data-sp-say="${spEsc(text)}" title="Nghe">🔊</button>` : '';
+}
+
+// ---------- Lịch sử luyện ----------
+function spNewLog() {
+    return { v: 1, unlocked: 1, passed: [false, false, false], best: {}, mistakes: [], usage: null, mnemonic: '', attempts: 0, updated: 0 };
+}
+function spNormalizeLog(raw) {
+    const log = spNewLog();
+    if (!raw || typeof raw !== 'object') return log;
+    log.unlocked = Math.min(3, Math.max(1, parseInt(raw.unlocked, 10) || 1));
+    if (Array.isArray(raw.passed)) log.passed = [0, 1, 2].map(function(i) { return !!raw.passed[i]; });
+    if (raw.best && typeof raw.best === 'object') log.best = raw.best;
+    if (Array.isArray(raw.mistakes)) log.mistakes = raw.mistakes.filter(function(m) { return m && m.tag; });
+    log.usage = raw.usage || null;
+    log.mnemonic = raw.mnemonic || '';
+    log.attempts = parseInt(raw.attempts, 10) || 0;
+    log.updated = parseInt(raw.updated, 10) || 0;
+    return log;
+}
+function spSortMistakes(list) {
+    return list.sort(function(x, y) { return (y.n || 1) - (x.n || 1) || (y.at || 0) - (x.at || 0); });
+}
+// Gộp lịch sử từ field (đồng bộ từ máy tính) với lịch sử lưu trong máy này
+function spMergeLogs(a, b) {
+    a = spNormalizeLog(a); b = spNormalizeLog(b);
+    const m = spNewLog();
+    m.unlocked = Math.max(a.unlocked, b.unlocked);
+    m.passed = [0, 1, 2].map(function(i) { return a.passed[i] || b.passed[i]; });
+    Object.keys(Object.assign({}, a.best, b.best)).forEach(function(k) {
+        const x = a.best[k], y = b.best[k];
+        m.best[k] = !x ? y : !y ? x : ((y.at || 0) > (x.at || 0) ? y : x);
+    });
+    const byTag = {};
+    a.mistakes.concat(b.mistakes).forEach(function(x) {
+        const cur = byTag[x.tag];
+        if (!cur) { byTag[x.tag] = Object.assign({}, x); return; }
+        cur.n = Math.max(cur.n || 1, x.n || 1);
+        if ((x.at || 0) > (cur.at || 0)) { cur.at = x.at; cur.label = x.label || cur.label; }
+    });
+    m.mistakes = spSortMistakes(Object.values(byTag)).slice(0, 8);
+    m.usage = a.usage || b.usage;
+    m.mnemonic = a.mnemonic || b.mnemonic;
+    m.attempts = Math.max(a.attempts, b.attempts);
+    m.updated = Math.max(a.updated, b.updated);
+    return m;
+}
+function spSaveLog() {
+    const st = spState;
+    if (!st) return;
+    st.log.updated = Date.now();
+    spStoreSet(st.storeKey, st.log);
+    if (hasAnkiBridge()) {
+        try {
+            pycmd('sp_save:' + JSON.stringify({ word: st.word, data: st.log }), function(res) {
+                if (res !== 'ok') console.warn('[Luyện câu] Không ghi được vào field UserSentence:', res);
+            });
+        } catch (e) { console.warn('[Luyện câu] pycmd lỗi:', e); }
+    }
+}
+function spRecordMistakes(issues) {
+    const st = spState, now = Date.now();
+    const weak = spStoreGet('sp_weak_v1') || {};
+    issues.forEach(function(i) {
+        // Chỉ ghi lỗi ngôn ngữ (bỏ lỗi "sai đề"), mỗi đề chỉ đếm một lần cho mỗi loại lỗi
+        if (i.severity !== 'error' || i.category === 'task' || st.taskTags[i.tag]) return;
+        st.taskTags[i.tag] = true;
+        const label = i.label_vi || i.fix || i.tag;
+        const cur = st.log.mistakes.find(function(m) { return m.tag === i.tag; });
+        if (cur) { cur.n = (cur.n || 1) + 1; cur.at = now; cur.label = label; }
+        else st.log.mistakes.push({ tag: i.tag, label: label, cat: i.category, n: 1, at: now });
+        const w = weak[i.tag] || { label: label, cat: i.category, n: 0 };
+        w.n += 1; w.at = now; w.label = label;
+        weak[i.tag] = w;
+    });
+    st.log.mistakes = spSortMistakes(st.log.mistakes).slice(0, 8);
+    // Điểm yếu chung (mọi từ) chỉ lưu trong máy này, giữ 20 loại hay mắc nhất
+    const top = Object.entries(weak).sort(function(a, b) { return b[1].n - a[1].n || (b[1].at || 0) - (a[1].at || 0); }).slice(0, 20);
+    spStoreSet('sp_weak_v1', Object.fromEntries(top));
+}
+function spRememberTask(taskVi) {
+    const key = 'sp_recent_v1::' + spState.word.toLowerCase();
+    const list = (spStoreGet(key) || []).filter(function(t) { return t !== taskVi; });
+    list.unshift(taskVi);
+    spStoreSet(key, list.slice(0, 6));
+}
+function spCleanUsage(u) {
+    if (!u || typeof u !== 'object') return null;
+    const pick = function(arr) {
+        return (Array.isArray(arr) ? arr : []).filter(function(it) { return it && it.form; }).slice(0, 5).map(function(it) {
+            return { form: String(it.form), note_vi: String(it.note_vi || ''), example: String(it.example || '') };
+        });
+    };
+    const out = { particles: pick(u.particles), collocations: pick(u.collocations), structures: pick(u.structures), phrases: pick(u.phrases) };
+    return (out.particles.length + out.collocations.length + out.structures.length + out.phrases.length) ? out : null;
+}
+function spStoreUsage(data) {
+    const usage = spCleanUsage(data && data.usage_card);
+    if (usage) spState.log.usage = usage;
+    if (data && data.mnemonic_vi) spState.log.mnemonic = String(data.mnemonic_vi);
+}
+
+// ---------- Gọi Gemini ----------
+function spParseJson(text) {
+    try { return JSON.parse(text); } catch (e) { /* thử tách khối JSON bên dưới */ }
+    const m = text.match(/\{[\s\S]*\}/);
+    if (m) { try { return JSON.parse(m[0]); } catch (e) { /* rơi xuống báo lỗi */ } }
+    throw new Error('AI trả về dữ liệu không đọc được');
+}
+function spSchema(base, withUsage) {
+    const schema = JSON.parse(JSON.stringify(base));
+    if (!withUsage) {
+        delete schema.properties.usage_card;
+        delete schema.properties.mnemonic_vi;
+        schema.propertyOrdering = schema.propertyOrdering.filter(function(k) { return k !== 'usage_card' && k !== 'mnemonic_vi'; });
+    }
+    return schema;
+}
+// ---------- Prompt ----------
+function spLangName() {
+    return spState.lang === 'zh' ? 'Chinese (Mandarin, Simplified characters)' : 'English';
+}
+function spCardContext() {
+    const st = spState;
+    const pick = function(selector, n) {
+        const arr = spJson(selector);
+        return Array.isArray(arr) ? arr.filter(function(x) { return x && x.word; }).slice(0, n).map(function(x) {
+            return x.meaning_vi ? x.word + ' (' + x.meaning_vi + ')' : x.word;
+        }) : [];
+    };
+    const lines = ['TARGET WORD: "' + st.word + '"', 'LANGUAGE: ' + spLangName()];
+    const pos = spText('.pos-badge');
+    const vi = spText('.definition-vi');
+    const en = spText('.definition-en').replace(/^📖\s*/, '');
+    const ctx = spText('#context-data');
+    const col = pick('#collocations-data', 6), pv = pick('#phrasalverbs-data', 4), idm = pick('#idioms-data', 3);
+    if (pos) lines.push('PART OF SPEECH ON CARD: ' + pos);
+    if (vi) lines.push('VIETNAMESE MEANING ON CARD (practise THIS meaning): ' + vi);
+    if (en) lines.push('DEFINITION: ' + en);
+    if (ctx) lines.push('LEARNER\'S CONTEXT / TOPIC: ' + ctx);
+    if (col.length) lines.push('COLLOCATIONS ON CARD: ' + col.join('; '));
+    if (pv.length) lines.push('PHRASAL VERBS ON CARD: ' + pv.join('; '));
+    if (idm.length) lines.push('IDIOMS ON CARD: ' + idm.join('; '));
+    return lines.join('\n');
+}
+function spLevelGuide(level) {
+    const zh = spState.lang === 'zh', lang = zh ? 'Chinese' : 'English';
+    if (level === 1) {
+        return 'LEVEL 1: PHRASE. Put in "phrase_vi" ONLY a short Vietnamese phrase of 3–8 words (never a full sentence), this is exactly what the learner translates. "task_vi" is ONE natural Vietnamese context sentence that contains that phrase word-for-word (a real-life sentence, NOT an instruction like "Hãy dịch..."). Its natural ' + lang + ' equivalent must be a SHORT PHRASE (not a full sentence) containing the target word together with its key partner: '
+            + (zh ? 'a particle (了/着/过/的/地/得), a measure word, a resultative/directional complement or a typical verb–object pairing. Format example for ANOTHER word: "đã đọc xong cuốn sách này" → "看完了这本书".'
+                  : 'its dependent preposition, the verb/adjective/noun it typically collocates with, or the particle of a phrasal verb. Format example for ANOTHER word: "phụ thuộc vào thời tiết" → "depend on the weather".')
+            + ' Never reuse the format example; build the phrase around the target word.';
+    }
+    if (level === 2) {
+        return 'LEVEL 2: SENTENCE. Give exactly ONE natural Vietnamese sentence (8–16 words, never two sentences) for the learner to express in ' + lang + '. Solving it must require the target word with a correct grammar pattern or collocation (its verb pattern, '
+            + (zh ? 'aspect particle, complement, measure word, word order' : 'tense, preposition, article, word order') + ').';
+    }
+    return 'LEVEL 3: SITUATION. Describe a short real-life situation in Vietnamese (1–2 sentences) and ask the learner to write 1–2 ' + lang + ' sentences responding to it. The answer must use the target word PLUS exactly one extra required element related to the word (a phrasal verb, idiom, fixed phrase or grammar structure), listed in "must_use" together with the target word.';
+}
+function spMistakeContext() {
+    const st = spState;
+    const own = st.log.mistakes.slice(0, 5).map(function(m) { return '- ' + m.label; });
+    const weak = Object.values(spStoreGet('sp_weak_v1') || {})
+        .sort(function(a, b) { return (b.n || 0) - (a.n || 0); })
+        .map(function(w) { return '- ' + w.label; })
+        .filter(function(l) { return own.indexOf(l) < 0; })
+        .slice(0, 4);
+    let out = '';
+    if (own.length) out += '\nPAST MISTAKES OF THIS LEARNER WITH THIS WORD (design the task so the learner must get one of these right):\n' + own.join('\n');
+    if (weak.length) out += '\nGENERAL WEAK POINTS OF THIS LEARNER (target one only if it fits naturally):\n' + weak.join('\n');
+    return out;
+}
+function spUsageInstruction() {
+    const zh = spState.lang === 'zh';
+    return [
+        '- ALSO fill "usage_card": a compact cheat-sheet of how the target word is used, only items that contain the target word or directly go with it. Each item has "form" (the pattern' + (zh ? ', with pinyin in brackets' : '') + '), "note_vi" (short Vietnamese meaning or note) and an optional short "example".',
+        '  "particles": ' + (zh ? 'particles / measure words / complements that go with it' : 'dependent prepositions / particles that go with it') + ' (max 4); "collocations": the most common collocations (max 5); "structures": key grammar patterns (max 3); "phrases": phrasal verbs, idioms or fixed phrases containing it (max 4). Use an empty array when nothing fits.',
+        '- ALSO fill "mnemonic_vi": ONE short, vivid Vietnamese memory trick (max 40 words) linking the word\'s sound/shape/meaning with its key partner word.'
+    ].join('\n');
+}
+function spBuildTaskPrompt(level, needUsage) {
+    const st = spState, zh = st.lang === 'zh';
+    const recent = spStoreGet('sp_recent_v1::' + st.word.toLowerCase()) || [];
+    const parts = [
+        'You are an expert ' + spLangName() + ' teacher for Vietnamese learners. Create ONE practice task that makes the learner actively USE the target word, so they remember it together with its prepositions/particles, collocations, grammar patterns and phrases.',
+        '',
+        spCardContext(),
+        '',
+        spLevelGuide(level) + spMistakeContext()
+    ];
+    if (recent.length) parts.push('\nDO NOT repeat or closely copy these recent tasks:\n' + recent.map(function(t) { return '- ' + t; }).join('\n'));
+    parts.push(
+        '',
+        'RULES:',
+        '- "task_vi": the task shown to the learner, in Vietnamese. It must NOT contain the answer, nor the required preposition/particle.',
+        '- "phrase_vi": at level 1 the exact short Vietnamese phrase to translate (3–8 words, must appear word-for-word inside "task_vi" if task_vi is a sentence); at level 2–3 an empty string.',
+        '- "focus": one of particle, collocation, grammar, phrase, what this task trains.',
+        '- "focus_hint_vi": one short Vietnamese hint pointing to what to pay attention to, WITHOUT giving the answer.',
+        '- "must_use": the words the answer must contain: always the target word; at level 3 also the one extra element. Never list the preposition/particle the learner has to find by themselves.',
+        '- "reference_answers": 1–3 natural, correct answers.' + (zh ? ' Hanzi only, no pinyin; put the pinyin of the first answer in "reference_pinyin".' : ''),
+        '- Use the meaning shown on the card. Make it natural and useful in real life.'
+    );
+    if (needUsage) parts.push(spUsageInstruction());
+    parts.push('Return JSON only.');
+    return parts.join('\n');
+}
+function spBuildGradePrompt(answer, attempt, needUsage) {
+    const st = spState, zh = st.lang === 'zh', t = st.task;
+    const expected = { 1: 'a short phrase (a full sentence containing the correct phrase is also fine)', 2: 'one sentence', 3: '1–2 sentences responding to the situation' };
+    const parts = [
+        'You are a strict but encouraging ' + spLangName() + ' teacher grading a Vietnamese learner. Explain in simple Vietnamese, without linguistic jargon.',
+        '',
+        spCardContext(),
+        ''
+    ];
+    if (st.mode === 'free') {
+        parts.push('MODE: free writing. the learner wrote their own sentence with the target word (no task). Judge whether the target word and its prepositions/particles, collocations, grammar and phrases are used correctly and naturally.');
+    } else {
+        parts.push(
+            'MODE: ' + SP_LEVELS[String(st.mode)].name + '. Expected answer: ' + expected[st.mode] + '.',
+            'TASK GIVEN (Vietnamese): ' + JSON.stringify(t.task_vi),
+            t.phrase_vi ? 'PHRASE TO TRANSLATE (only this part is required): ' + JSON.stringify(t.phrase_vi) : '',
+            'MUST USE: ' + JSON.stringify(t.must_use),
+            'REFERENCE ANSWERS (for you only; other correct answers are fine): ' + JSON.stringify(t.reference_answers)
+        );
+    }
+    parts.push(
+        'LEARNER ANSWER: ' + JSON.stringify(answer),
+        'ATTEMPT: ' + attempt + ' of ' + SP_MAX_ATTEMPTS,
+        '',
+        'CHECK in this order: (1) the target word has the right meaning and form; (2) prepositions/particles that go with it; (3) collocations and word choice; (4) grammar (tense/aspect, word order, articles, sentence structure); (5) phrasal verbs, idioms, fixed phrases if used or required; (6) the answer does what was asked' + (st.mode === 'free' ? '' : ' and keeps the meaning of the task') + '.',
+        'RULES:',
+        '- "issues": every real problem, max 4. "severity": "error" for anything wrong or unnatural to a native speaker; "suggestion" only for an optional improvement of an already correct answer.',
+        '  "category": one of particle, collocation, grammar, phrase, word_choice, spelling, task. Use "task" only when the meaning does not match the task or a required word is missing, never for answer length or format.',
+        '  "excerpt": the exact wrong part copied from the learner answer (empty if something is missing).',
+        '  "hint_vi": a Vietnamese hint that helps the learner fix it by themselves WITHOUT giving the corrected words.',
+        '  "fix": the corrected words. "explain_vi": 1–2 short Vietnamese sentences on why.',
+        '  "tag": a short stable lowercase key for this kind of mistake, e.g. "prep:interested-in", "particle:le-completion", "colloc:make-decision", "grammar:present-perfect".',
+        '  "label_vi": a short Vietnamese label for the learner\'s mistake list, e.g. "Sai giới từ: interested ON → IN".',
+        '- "pass": true only when there is no issue with severity "error".',
+        '- "summary_vi": one short Vietnamese sentence with the verdict. If the answer is not correct, do NOT reveal the corrected words.',
+        '- "corrected": the learner answer with minimal corrections (keep their idea); the same as the answer if it is already correct.',
+        '- "model_answer": one natural, idiomatic answer' + (zh ? ' (Hanzi only); put its pinyin in "model_pinyin" and the pinyin of "corrected" in "corrected_pinyin".' : '.'),
+        '- "explain_vi": max 80 words in Vietnamese on the key usage points of the target word shown by this answer.',
+        '- "upgrade_vi": if pass, one tip to sound more natural or advanced; otherwise an empty string.'
+    );
+    if (needUsage) parts.push(spUsageInstruction());
+    parts.push('Return JSON only.');
+    return parts.join('\n');
+}
+function spNormalizeGrade(d) {
+    if (!d || typeof d !== 'object') throw new Error('AI trả về dữ liệu không hợp lệ');
+    const issues = (Array.isArray(d.issues) ? d.issues : []).filter(function(i) { return i && (i.hint_vi || i.fix); }).slice(0, 5).map(function(i) {
+        return {
+            severity: i.severity === 'suggestion' ? 'suggestion' : 'error',
+            category: String(i.category || ''),
+            excerpt: String(i.excerpt || ''),
+            hint_vi: String(i.hint_vi || ''),
+            fix: String(i.fix || ''),
+            explain_vi: String(i.explain_vi || ''),
+            tag: String(i.tag || i.category || 'other').toLowerCase().slice(0, 60),
+            label_vi: String(i.label_vi || '')
+        };
+    });
+    const str = function(v) { return v == null ? '' : String(v); };
+    return {
+        // Không tin hẳn cờ pass: còn lỗi nặng thì chưa đạt
+        pass: d.pass === true && !issues.some(function(i) { return i.severity === 'error'; }),
+        issues: issues,
+        summary_vi: str(d.summary_vi), corrected: str(d.corrected), corrected_pinyin: str(d.corrected_pinyin),
+        model_answer: str(d.model_answer), model_pinyin: str(d.model_pinyin),
+        explain_vi: str(d.explain_vi), upgrade_vi: str(d.upgrade_vi),
+        raw: d
+    };
+}
+
+// ---------- Giao diện ----------
+function spDefaultLevel(log) {
+    for (let l = 1; l <= log.unlocked; l++) if (!log.passed[l - 1]) return l;
+    return log.unlocked;
+}
+function spInit() {
+    const input = spEl('sp-input');
+    if (!input) return;
+    const word = spText('.word');
+    if (!word) return;
+    const fieldLog = spJson('#user-sentence-data');
+    const storeKey = 'sp_log_v1::' + word.toLowerCase();
+    const log = spMergeLogs(fieldLog && fieldLog.v ? fieldLog : null, spStoreGet(storeKey));
+    spState = {
+        token: Math.random().toString(36).slice(2), word: word, lang: /[㐀-鿿]/.test(word) ? 'zh' : 'en',
+        storeKey: storeKey, log: log, mode: spDefaultLevel(log),
+        task: null, attempts: 0, finished: false, lastGrade: null, taskTags: {}, busy: false
+    };
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); spCheck(); }
+    });
+    input.addEventListener('focus', spOnInputFocus);
+    spEl('sp-container').addEventListener('click', function(e) {
+        const btn = e.target.closest('[data-sp-say]');
+        if (btn) speakTextWithEdge(btn.getAttribute('data-sp-say'), e);
+    });
+    spRenderLevels();
+    spRenderMemory();
+    spRenderTask();
+    spUpdateButtons();
+}
+function spRenderLevels() {
+    const st = spState;
+    let html = '';
+    [1, 2, 3].forEach(function(l) {
+        const locked = l > st.log.unlocked, passed = st.log.passed[l - 1];
+        html += '<button type="button" class="sp-level' + (st.mode === l ? ' active' : '') + (locked ? ' locked' : '') + '"'
+            + (locked ? ' disabled title="Đạt bậc trước để mở"' : '') + ' onclick="spSetMode(' + l + ')">'
+            + (passed ? '✅' : locked ? '🔒' : '⭐') + ' ' + SP_LEVELS[l].name + '<small>' + SP_LEVELS[l].short + '</small></button>';
+    });
+    html += '<button type="button" class="sp-level' + (st.mode === 'free' ? ' active' : '') + '" onclick="spSetMode(\'free\')">✍️ '
+        + SP_LEVELS.free.name + '<small>' + SP_LEVELS.free.short + '</small></button>';
+    spEl('sp-levels').innerHTML = html;
+}
+function spRenderMemory() {
+    const st = spState, box = spEl('sp-memory');
+    const best = st.log.best['3'] || st.log.best['2'] || st.log.best['1'] || st.log.best.free;
+    const mistakes = st.log.mistakes.slice(0, 3);
+    if (!best && !mistakes.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    let html = '';
+    if (best) {
+        html += '<div class="sp-mem-label">🏆 Câu tốt nhất của bạn (' + SP_LEVELS[best.level].name + ')</div>'
+            + '<div class="sp-mem-text">' + spEsc(best.text) + ' ' + spSayBtn(best.text) + '</div>';
+    }
+    if (mistakes.length) {
+        html += '<div class="sp-mem-mistakes"><div class="sp-mem-label">⚠️ Lỗi bạn hay mắc với từ này</div><ul>'
+            + mistakes.map(function(m) { return '<li>' + spEsc(m.label) + (m.n > 1 ? ' <span class="sp-count">×' + m.n + '</span>' : '') + '</li>'; }).join('')
+            + '</ul></div>';
+    }
+    box.innerHTML = html;
+    box.style.display = 'block';
+}
+function spRenderTask() {
+    const st = spState, box = spEl('sp-task'), input = spEl('sp-input');
+    // Không khoá ô nhập (trên điện thoại ô bị khoá thì chạm vào không hiện bàn phím);
+    // chạm vào ô lúc chưa có đề / đã xong sẽ tự ra đề tiếp (xem spOnInputFocus)
+    input.placeholder = st.finished
+        ? (st.mode === 'free' ? 'Chạm để viết câu khác...' : 'Chạm để làm đề tiếp theo...')
+        : (st.mode !== 'free' && !st.task ? 'Chạm vào đây để AI ra đề, rồi viết câu trả lời...' : 'Viết câu trả lời của bạn ở đây...');
+    if (st.mode === 'free') {
+        box.innerHTML = '<div class="sp-task-label">✍️ Tự do</div><div class="sp-task-text">Tự đặt một câu bất kỳ có dùng "<b>'
+            + spEsc(st.word) + '</b>". Câu và lỗi vẫn được lưu nhưng không tính lên bậc.</div>';
+        return;
+    }
+    const label = SP_LEVELS[String(st.mode)].name + ' · ' + SP_LEVELS[String(st.mode)].short;
+    if (!st.task) {
+        box.innerHTML = '<div class="sp-task-label">' + label + '</div><div class="sp-task-text sp-muted">Bấm <b>🎲 Đề mới</b> hoặc chạm vào ô bên dưới để AI ra đề.</div>';
+        return;
+    }
+    const t = st.task;
+    const progress = st.finished ? 'Đã xong' : 'Lần thử ' + (st.attempts + 1) + '/' + SP_MAX_ATTEMPTS;
+    box.innerHTML = '<div class="sp-task-label">' + label + ' · ' + progress + '</div>'
+        + spTaskTextHtml(t)
+        + (t.focus_hint_vi ? '<div class="sp-task-hint">💡 ' + spFmt(t.focus_hint_vi) + '</div>' : '')
+        + (t.must_use.length ? '<div class="sp-task-must">Phải dùng: ' + t.must_use.map(function(w) { return '<code>' + spEsc(w) + '</code>'; }).join(' ') + '</div>' : '');
+}
+// Bậc 1: hiện rõ CỤM cần dịch; câu dài (nếu có) chỉ là ngữ cảnh, tô màu đúng cụm đó trong câu
+function spTaskTextHtml(t) {
+    const phrase = t.phrase_vi;
+    const lang = spState.lang === 'zh' ? 'tiếng Trung' : 'tiếng Anh';
+    if (!phrase) {
+        // Bậc 2: dịch cả câu; Bậc 3: trả lời tình huống
+        const lead = spState.mode === 2 ? 'Viết câu ' + lang + ' cho:'
+            : spState.mode === 3 ? 'Trả lời bằng 1–2 câu ' + lang + ':' : '';
+        return (lead ? '<div class="sp-task-lead">' + lead + '</div>' : '') + '<div class="sp-task-text">' + spFmt(t.task_vi) + '</div>';
+    }
+    let html = '<div class="sp-task-text">Viết cụm ' + lang + ' cho:</div><div class="sp-phrase">' + spEsc(phrase) + '</div>';
+    const context = (t.task_vi || '').trim();
+    // Chỉ hiện ngữ cảnh khi là câu thật (không phải câu lệnh "Hãy dịch..." hay chỉ lặp lại cụm)
+    const rest = context.toLowerCase().replace(phrase.toLowerCase(), '').replace(/[\s.,:;!?"'“”]+/g, ' ').trim();
+    const isInstruction = /(hãy|dịch|cụm từ sau|sang tiếng)/i.test(rest);
+    if (context && rest.split(' ').length >= 3 && !isInstruction) {
+        const pos = context.toLowerCase().indexOf(phrase.toLowerCase());
+        const marked = pos >= 0
+            ? spEsc(context.slice(0, pos)) + '<mark class="sp-phrase-mark">' + spEsc(context.slice(pos, pos + phrase.length)) + '</mark>' + spEsc(context.slice(pos + phrase.length))
+            : spEsc(context);
+        html += '<div class="sp-context">Ngữ cảnh: ' + marked + '</div>';
+    }
+    return html;
+}
+function spOnInputFocus() {
+    const st = spState, input = spEl('sp-input');
+    if (!st) return;
+    // Bàn phím điện thoại hay che mất ô nhập -> cuộn ô lên giữa màn hình
+    // (iPhone tự cuộn ô lên; chỉ cuộn thêm khi ô thật sự nằm dưới mép bàn phím, tránh giật màn hình)
+    setTimeout(function() {
+        try {
+            const visibleBottom = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            if (input.getBoundingClientRect().bottom > visibleBottom) input.scrollIntoView({ block: 'center' });
+        } catch (e) { /* trình duyệt cũ */ }
+    }, 400);
+    if (st.busy) return;
+    if (st.finished) {
+        if (st.mode === 'free') spResetFree();
+        else spNewTask();
+    } else if (st.mode !== 'free' && !st.task) {
+        spNewTask();
+    }
+}
+function spUpdateButtons() {
+    const st = spState;
+    const btnNew = spEl('sp-btn-new'), btnCheck = spEl('sp-btn-check'), btnReveal = spEl('sp-btn-reveal');
+    btnNew.style.display = st.mode === 'free' ? 'none' : '';
+    btnNew.disabled = st.busy;
+    btnNew.textContent = st.task ? '🎲 Đề khác' : '🎲 Đề mới';
+    btnCheck.disabled = st.busy || st.finished || (st.mode !== 'free' && !st.task);
+    btnCheck.textContent = st.attempts > 0 && !st.finished ? '🔁 Chấm lại' : '✅ Chấm';
+    const canReveal = !st.finished && ((st.task && st.task.reference_answers.length) || st.lastGrade);
+    btnReveal.disabled = st.busy || !canReveal;
+}
+function spSetBusy(busy, text) {
+    const st = spState, box = spEl('sp-status');
+    st.busy = busy;
+    if (busy) {
+        box.innerHTML = '<span class="sp-spinner"></span><span>' + spEsc(text || 'Đang xử lý...') + '</span>';
+        box.style.display = 'flex';
+    } else {
+        box.style.display = 'none';
+        box.innerHTML = '';
+    }
+    spUpdateButtons();
+}
+function spIssueHtml(i, revealed) {
+    const cat = SP_CATEGORY_NAMES[i.category] || i.category || 'Lỗi';
+    let excerpt = '';
+    if (i.excerpt) excerpt = '“' + spEsc(i.excerpt) + '”' + (revealed && i.fix ? ' → <b>' + spEsc(i.fix) + '</b>' : '');
+    else if (revealed && i.fix) excerpt = '→ <b>' + spEsc(i.fix) + '</b>';
+    return '<div class="sp-issue ' + (i.severity === 'error' ? 'error' : 'suggestion') + '">'
+        + '<div class="sp-issue-cat">' + (i.severity === 'error' ? '' : 'Gợi ý · ') + spEsc(cat) + '</div>'
+        + (excerpt ? '<div class="sp-issue-excerpt">' + excerpt + '</div>' : '')
+        + '<div class="sp-issue-hint">' + spFmt(revealed ? (i.explain_vi || i.hint_vi) : i.hint_vi) + '</div>'
+        + '</div>';
+}
+function spAnswersHtml(g, t) {
+    const row = function(label, text, pinyin) {
+        if (!text) return '';
+        return '<div class="sp-answer"><div class="sp-answer-label">' + label + '</div><div class="sp-answer-text">' + spEsc(text) + ' ' + spSayBtn(text) + '</div>'
+            + (pinyin ? '<div class="item-content-pinyin">' + spEsc(pinyin) + '</div>' : '') + '</div>';
+    };
+    let html = '';
+    if (g && !g.pass && g.corrected) html += row('✏️ Câu của bạn sau khi sửa', g.corrected, g.corrected_pinyin);
+    if (g && g.model_answer) {
+        html += row(g.pass ? '✨ Câu mẫu tham khảo' : '✅ Câu mẫu', g.model_answer, g.model_pinyin);
+    } else if (t && t.reference_answers.length) {
+        html += t.reference_answers.map(function(a, k) { return row(k ? '🔁 Cách nói khác' : '✅ Đáp án', a, k ? '' : t.reference_pinyin); }).join('');
+    }
+    return html;
+}
+function spUsageHtml(u) {
+    const sec = function(title, items) {
+        if (!items || !items.length) return '';
+        return '<div class="sp-usage-sec"><div class="sp-usage-title">' + title + '</div>' + items.map(function(it) {
+            return '<div class="sp-usage-item"><b>' + spEsc(it.form) + '</b>' + (it.note_vi ? ': ' + spEsc(it.note_vi) : '')
+                + (it.example ? '<div class="sp-usage-ex">' + spEsc(it.example) + '</div>' : '') + '</div>';
+        }).join('') + '</div>';
+    };
+    return '<div class="sp-usage"><div class="sp-usage-head">📇 Thẻ tóm tắt cách dùng "' + spEsc(spState.word) + '"</div>'
+        + sec(spState.lang === 'zh' ? '🔗 Trợ từ / lượng từ / bổ ngữ đi kèm' : '🔗 Giới từ / tiểu từ đi kèm', u.particles)
+        + sec('🤝 Collocation', u.collocations)
+        + sec('🏗️ Cấu trúc', u.structures)
+        + sec('🚀 Phrasal verb / idiom / cụm cố định', u.phrases)
+        + '</div>';
+}
+function spMoreHtml(g) {
+    const st = spState;
+    let html = '';
+    if (g && g.explain_vi) html += '<div class="sp-explain">📝 ' + spFmt(g.explain_vi) + '</div>';
+    if (g && g.pass && g.upgrade_vi) html += '<div class="sp-upgrade">🚀 <b>Nâng cao:</b> ' + spFmt(g.upgrade_vi) + '</div>';
+    if (st.log.usage) html += spUsageHtml(st.log.usage);
+    if (st.log.mnemonic) html += '<div class="sp-mnemonic">🧠 <b>Mẹo nhớ:</b> ' + spFmt(st.log.mnemonic) + '</div>';
+    return html;
+}
+function spRenderResult(opts) {
+    opts = opts || {};
+    const st = spState, g = st.lastGrade, t = st.task;
+    const revealed = st.finished;
+    let html = '';
+    if (g) {
+        let head;
+        if (g.pass) head = '🎉 Đạt!';
+        else if (opts.gaveUp) head = '📘 Đáp án';
+        else if (revealed) head = '📘 Chưa đạt sau ' + st.attempts + ' lần, xem đáp án bên dưới';
+        else head = '🔁 Chưa đạt, tự sửa lại nhé (còn ' + (SP_MAX_ATTEMPTS - st.attempts) + ' lần)';
+        html += '<div class="sp-verdict ' + (g.pass ? 'pass' : 'fail') + '"><div class="sp-verdict-head">' + head + '</div>'
+            + (g.summary_vi ? '<div>' + spFmt(g.summary_vi) + '</div>' : '') + '</div>';
+        if (opts.unlockedNow) html += '<div class="sp-unlock">🔓 Đã mở ' + SP_LEVELS[opts.unlockedNow].name + ': ' + SP_LEVELS[opts.unlockedNow].short + '!</div>';
+        if (opts.allDone) html += '<div class="sp-unlock">🏆 Bạn đã vượt cả 3 bậc với từ này!</div>';
+        html += g.issues.filter(function(i) { return i.severity === 'error'; }).map(function(i) { return spIssueHtml(i, revealed); }).join('');
+        if (revealed) html += g.issues.filter(function(i) { return i.severity !== 'error'; }).map(function(i) { return spIssueHtml(i, true); }).join('');
+    } else if (opts.gaveUp) {
+        html += '<div class="sp-verdict fail"><div class="sp-verdict-head">📘 Đáp án</div></div>';
+    }
+    if (revealed) {
+        html += spAnswersHtml(g, t);
+        const more = spMoreHtml(g);
+        if (more) {
+            html += '<button type="button" class="toggle-section-btn" onclick="toggleSection(\'sp-more\')">📖 Xem thêm: giải thích, thẻ cách dùng, mẹo nhớ ▼</button>'
+                + '<div id="sp-more" class="collapsible-section" style="display: none;">' + more + '</div>';
+        }
+        html += st.mode === 'free'
+            ? '<button type="button" class="sp-btn sp-btn-next" onclick="spResetFree()">✍️ Viết câu khác</button>'
+            : '<button type="button" class="sp-btn sp-btn-next" onclick="spNewTask()">🎲 Đề tiếp theo</button>';
+    }
+    spEl('sp-result').innerHTML = html;
+}
+function spResetTask() {
+    const st = spState;
+    st.attempts = 0; st.finished = false; st.lastGrade = null; st.taskTags = {};
+    spEl('sp-input').value = '';
+    spEl('sp-result').innerHTML = '';
+}
+
+// ---------- Hành động ----------
+function spSetMode(mode) {
+    const st = spState;
+    if (!st || st.busy || st.mode === mode) return;
+    if (mode !== 'free' && mode > st.log.unlocked) return;
+    st.mode = mode;
+    st.task = null;
+    spResetTask();
+    spRenderLevels();
+    spRenderTask();
+    spUpdateButtons();
+    if (mode !== 'free') spNewTask();
+}
+function spResetFree() {
+    const st = spState;
+    if (!st || st.busy) return;
+    spResetTask();
+    spRenderTask();
+    spUpdateButtons();
+    spEl('sp-input').focus();
+}
+async function spNewTask() {
+    const st = spState;
+    if (!st || st.busy || st.mode === 'free') return;
+    const token = st.token, level = st.mode, needUsage = !st.log.usage;
+    const textAtStart = spEl('sp-input').value;
+    spSetBusy(true, 'Đang ra đề ' + SP_LEVELS[String(level)].name + '...');
+    try {
+        const data = await geminiGenerateJson(spBuildTaskPrompt(level, needUsage), spSchema(SP_TASK_SCHEMA, needUsage), 0.9);
+        if (!spIsCurrent(token)) return;
+        if (!data || !data.task_vi) throw new Error('AI không trả về đề bài');
+        const list = function(v) { return Array.isArray(v) ? v.map(String).filter(Boolean) : []; };
+        st.task = {
+            task_vi: String(data.task_vi),
+            // Bậc 1: chỉ dịch đúng cụm này (AI hay đưa cả câu dài làm người học không biết dịch phần nào)
+            phrase_vi: level === 1 ? String(data.phrase_vi || '').trim() : '',
+            focus: String(data.focus || ''),
+            focus_hint_vi: String(data.focus_hint_vi || ''),
+            // Bậc 1–2 chỉ hiện từ đang học: AI hay liệt kê cả từ đi kèm, làm lộ đáp án
+            must_use: level === 3 && list(data.must_use).length ? list(data.must_use).slice(0, 3) : [st.word],
+            reference_answers: list(data.reference_answers),
+            reference_pinyin: String(data.reference_pinyin || '')
+        };
+        if (needUsage) { spStoreUsage(data); if (st.log.usage) spSaveLog(); }
+        spRememberTask(st.task.task_vi);
+        // Người học đã gõ trong lúc chờ đề -> giữ lại chữ đó, không xoá
+        const typed = spEl('sp-input').value;
+        spResetTask();
+        if (typed !== textAtStart) spEl('sp-input').value = typed;
+        spRenderTask();
+        spEl('sp-input').focus();
+    } catch (e) {
+        if (spIsCurrent(token)) { console.error('[Luyện câu]', e); showPracticeMessage('❌ ' + e.message, 'error'); }
+    } finally {
+        if (spIsCurrent(token)) spSetBusy(false);
+    }
+}
+async function spCheck() {
+    const st = spState;
+    if (!st || st.busy || st.finished) return;
+    if (st.mode !== 'free' && !st.task) return;
+    const answer = spEl('sp-input').value.trim();
+    if (!answer) { showPracticeMessage('⚠️ Hãy viết câu trả lời trước khi chấm', 'error'); return; }
+    const token = st.token, attempt = st.attempts + 1, needUsage = !st.log.usage;
+    spSetBusy(true, 'Đang chấm...');
+    try {
+        const g = spNormalizeGrade(await geminiGenerateJson(spBuildGradePrompt(answer, attempt, needUsage), spSchema(SP_GRADE_SCHEMA, needUsage), 0.2));
+        if (!spIsCurrent(token)) return;
+        st.attempts = attempt;
+        st.lastGrade = g;
+        st.log.attempts += 1;
+        if (needUsage) spStoreUsage(g.raw);
+        spRecordMistakes(g.issues);
+        const opts = {};
+        if (g.pass) {
+            st.finished = true;
+            st.log.best[String(st.mode)] = { level: String(st.mode), text: answer, at: Date.now() };
+            if (st.mode !== 'free') {
+                const wasPassed = st.log.passed[st.mode - 1];
+                st.log.passed[st.mode - 1] = true;
+                if (st.mode < 3 && st.log.unlocked < st.mode + 1) { st.log.unlocked = st.mode + 1; opts.unlockedNow = st.mode + 1; }
+                opts.allDone = !wasPassed && st.log.passed.every(Boolean);
+            }
+        } else if (attempt >= SP_MAX_ATTEMPTS) {
+            st.finished = true;
+        }
+        spSaveLog();
+        spRenderResult(opts);
+        spRenderLevels();
+        spRenderMemory();
+        spRenderTask();
+    } catch (e) {
+        if (spIsCurrent(token)) { console.error('[Luyện câu]', e); showPracticeMessage('❌ ' + e.message, 'error'); }
+    } finally {
+        if (spIsCurrent(token)) spSetBusy(false);
+    }
+}
+function spReveal() {
+    const st = spState;
+    if (!st || st.busy || st.finished) return;
+    st.finished = true;
+    spRenderResult({ gaveUp: true });
+    spRenderTask();
+    spUpdateButtons();
+}
+
+/* ==================== TAB ÁP DỤNG: ĐỌC HIỂU + TỪ VỰNG TRONG BÀI ==================== */
+// Bài đọc lấy từ field Reading (JSON: title, content, translation, questions).
+// "Tạo từ vựng" gọi Gemini trực tiếp từ thẻ (chạy cả trên điện thoại): 5 cụm từ + 2 cấu trúc.
+// Kết quả lưu ở localStorage của máy, và trên máy tính còn ghi vào field Reading_Vocabulary
+// qua pycmd('rv_save:...') để đồng bộ AnkiWeb.
+var RD_MAX_WORDS = 5;
+var RD_MAX_STRUCTURES = 2;
+var RD_VOCAB_SCHEMA = {
+    type: 'OBJECT',
+    properties: {
+        vocabulary: {
+            type: 'ARRAY',
+            items: {
+                type: 'OBJECT',
+                properties: {
+                    term: { type: 'STRING' }, in_text: { type: 'STRING' }, pos: { type: 'STRING' },
+                    meaning_vi: { type: 'STRING' }, example: { type: 'STRING' }, example_vi: { type: 'STRING' }
+                },
+                required: ['term', 'in_text', 'meaning_vi'],
+                propertyOrdering: ['term', 'in_text', 'pos', 'meaning_vi', 'example', 'example_vi']
+            }
+        },
+        structures: {
+            type: 'ARRAY',
+            items: {
+                type: 'OBJECT',
+                properties: {
+                    pattern: { type: 'STRING' }, in_text: { type: 'STRING' }, explain_vi: { type: 'STRING' },
+                    example: { type: 'STRING' }, example_vi: { type: 'STRING' }
+                },
+                required: ['pattern', 'explain_vi'],
+                propertyOrdering: ['pattern', 'in_text', 'explain_vi', 'example', 'example_vi']
+            }
+        }
+    },
+    required: ['vocabulary', 'structures'],
+    propertyOrdering: ['vocabulary', 'structures']
+};
+var rdState = null;
+
+function rdIsCurrent(token) { return !!(rdState && rdState.token === token && spEl('rd-reading')); }
+function rdPlainText(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = String(html || '');
+    return (tmp.textContent || '').trim();
+}
+function rdParseReading() {
+    const data = spJson('#reading-data');
+    return data && typeof data === 'object' && data.content ? data : null;
+}
+// Chuẩn hoá dữ liệu từ vựng (bản do thẻ tạo hoặc do các nút trong add-on tạo, tên khoá khác nhau)
+function rdNormalizeData(d) {
+    const s = function(v) { return v == null ? '' : String(v); };
+    const vocabulary = (Array.isArray(d.vocabulary) ? d.vocabulary : []).filter(function(v) { return v && (v.term || v.word); }).slice(0, RD_MAX_WORDS).map(function(v) {
+        return {
+            term: s(v.term || v.base_form || v.word), in_text: s(v.in_text || v.word), pos: s(v.pos),
+            meaning_vi: s(v.meaning_vi), example: s(v.example || v.example_from_reading), example_vi: s(v.example_vi || v.translation)
+        };
+    });
+    const structures = (Array.isArray(d.structures) ? d.structures : []).filter(function(x) { return x && (x.pattern || x.structure); }).slice(0, RD_MAX_STRUCTURES).map(function(x) {
+        return {
+            pattern: s(x.pattern || x.structure), in_text: s(x.in_text), explain_vi: s(x.explain_vi || x.explanation_vi),
+            example: s(x.example || x.example_from_reading), example_vi: s(x.example_vi || x.translation)
+        };
+    });
+    return { v: 1, at: d.at || Date.now(), vocabulary: vocabulary, structures: structures };
+}
+// Lấy bản mới hơn giữa field (đồng bộ từ máy tính) và bản lưu trong máy này.
+// Field chứa HTML kiểu cũ thì giữ lại để xem trong mục gập.
+function rdLoadData() {
+    const st = rdState, fieldEl = spEl('rd-vocab-field');
+    const raw = fieldEl ? (fieldEl.textContent || '').trim() : '';
+    let field = null;
+    if (raw) {
+        try { const d = JSON.parse(raw); if (d && d.v === 1) field = d; } catch (e) { /* HTML kiểu cũ */ }
+    }
+    const best = [field, spStoreGet(st.storeKey)].filter(Boolean).sort(function(a, b) { return (b.at || 0) - (a.at || 0); })[0];
+    if (best) return rdNormalizeData(best);
+    if (raw) {
+        const structEl = spEl('rd-struct-field');
+        st.legacyHtml = fieldEl.innerHTML + (structEl ? structEl.innerHTML : '');
+    }
+    return null;
+}
+// Tô từ khoá và gạch chân các cụm từ vựng (bấm để xem nghĩa) trong bài đọc
+function rdMarkText(text) {
+    const st = rdState, lower = text.toLowerCase(), ranges = [];
+    if (st.data) {
+        st.data.vocabulary.forEach(function(v, i) {
+            const needle = (v.in_text || v.term).trim().toLowerCase();
+            const pos = needle.length > 1 ? lower.indexOf(needle) : -1;
+            if (pos >= 0) ranges.push({ start: pos, end: pos + needle.length, kind: 'term', idx: i });
+        });
+    }
+    const kw = st.word.trim();
+    if (kw) {
+        const esc = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Tiếng Anh: bắt cả dạng biến đổi (plan -> plans, planned)
+        const re = /^[a-z]/i.test(kw) ? new RegExp('\\b' + esc + '\\w*', 'gi') : new RegExp(esc, 'g');
+        let m;
+        while ((m = re.exec(text))) ranges.push({ start: m.index, end: m.index + m[0].length, kind: 'key' });
+    }
+    ranges.sort(function(a, b) { return a.start - b.start || (b.end - b.start) - (a.end - a.start); });
+    const kept = [];
+    ranges.forEach(function(r) {
+        const last = kept[kept.length - 1];
+        if (last && r.start < last.end) {
+            // Chồng lấn: giữ cụm từ vựng (bấm được); nếu cụm chứa từ khoá thì tô cả hai
+            if (last.kind === 'term' && r.kind === 'key') last.hasKey = true;
+            else if (last.kind === 'key' && r.kind === 'term') { r.hasKey = true; kept[kept.length - 1] = r; }
+            return;
+        }
+        kept.push(r);
+    });
+    let html = '', cur = 0;
+    kept.forEach(function(r) {
+        if (r.start < cur) return;
+        html += spEsc(text.slice(cur, r.start));
+        const seg = spEsc(text.slice(r.start, r.end));
+        html += r.kind === 'term'
+            ? '<span class="rd-term tappable' + (r.hasKey ? ' rd-key' : '') + '" data-rd-i="' + r.idx + '">' + seg + '</span>'
+            : '<mark class="rd-key">' + seg + '</mark>';
+        cur = r.end;
+    });
+    return (html + spEsc(text.slice(cur))).replace(/\n/g, '<br>');
+}
+
+function rdInit() {
+    if (!spEl('rd-reading')) return;
+    const word = spText('.word');
+    rdState = {
+        token: Math.random().toString(36).slice(2), word: word, reading: rdParseReading(),
+        storeKey: 'rv_v1::' + word.toLowerCase(), data: null, legacyHtml: '', busy: false
+    };
+    rdState.data = rdLoadData();
+    spEl('rd-container').addEventListener('click', function(e) {
+        const say = e.target.closest('[data-sp-say]');
+        if (say) { speakTextWithEdge(say.getAttribute('data-sp-say'), e); return; }
+        const term = e.target.closest('.rd-term');
+        if (term) rdShowPop(term);
+        else rdHidePop();
+    });
+    rdRenderReading();
+    rdRenderQuestions();
+    rdRenderVocab();
+}
+function rdRenderReading() {
+    const r = rdState.reading, box = spEl('rd-reading');
+    if (!r) {
+        box.innerHTML = '<div class="rd-empty">Thẻ này chưa có bài đọc.</div>';
+        return;
+    }
+    box.innerHTML = '<div class="rd-passage" id="rd-passage">'
+        + (r.title ? '<div class="rd-title">' + spEsc(rdPlainText(r.title)) + '</div>' : '')
+        + '<div class="rd-text">' + rdMarkText(rdPlainText(r.content)) + '</div>'
+        + '<div class="rd-pop tappable" id="rd-pop" style="display: none;"></div>'
+        + '</div>'
+        + (r.translation
+            ? '<button type="button" class="toggle-section-btn rd-toggle" onclick="toggleSection(\'rd-translation\')">🌐 Xem bản dịch ▼</button>'
+              + '<div id="rd-translation" class="rd-translation" style="display: none;">' + spFmt(rdPlainText(r.translation)) + '</div>'
+            : '');
+}
+function rdShowPop(term) {
+    const v = rdState.data && rdState.data.vocabulary[Number(term.getAttribute('data-rd-i'))];
+    const pop = spEl('rd-pop'), passage = spEl('rd-passage');
+    if (!v || !pop || !passage) return;
+    pop.innerHTML = '<b>' + spEsc(v.term) + '</b>' + (v.pos ? ' <span class="rd-pos">' + spEsc(v.pos) + '</span>' : '')
+        + '<div>' + spEsc(v.meaning_vi) + '</div>';
+    pop.style.display = 'block';
+    const left = Math.max(0, Math.min(term.offsetLeft, passage.clientWidth - pop.offsetWidth));
+    pop.style.left = left + 'px';
+    pop.style.top = (term.offsetTop + term.offsetHeight + 4) + 'px';
+}
+function rdHidePop() {
+    const pop = spEl('rd-pop');
+    if (pop) pop.style.display = 'none';
+}
+function rdRenderQuestions() {
+    const r = rdState.reading, box = spEl('rd-questions');
+    const qs = (r && Array.isArray(r.questions)) ? r.questions.filter(function(q) { return q && q.question; }) : [];
+    if (!qs.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="rd-section-title">❓ Câu hỏi đọc hiểu</div>' + qs.map(function(q, qi) {
+        const options = Array.isArray(q.options) ? q.options : [];
+        return '<div class="rd-q" id="rd-q-' + qi + '"><div class="rd-q-text">' + (qi + 1) + '. ' + spEsc(rdPlainText(q.question)) + '</div>'
+            + options.map(function(o, oi) {
+                return '<button type="button" class="rd-opt" onclick="rdAnswer(' + qi + ',' + oi + ')">' + String.fromCharCode(65 + oi) + '. ' + spEsc(rdPlainText(o)) + '</button>';
+            }).join('')
+            + '<div class="rd-q-fb" id="rd-q-fb-' + qi + '"></div></div>';
+    }).join('');
+    rdState.questions = qs;
+}
+function rdAnswer(qi, oi) {
+    const q = rdState.questions && rdState.questions[qi], box = spEl('rd-q-' + qi);
+    if (!q || !box || box.getAttribute('data-done')) return;
+    box.setAttribute('data-done', '1');
+    const correct = Number(q.correctAnswer);
+    box.querySelectorAll('.rd-opt').forEach(function(b, k) {
+        b.disabled = true;
+        if (k === correct) b.classList.add('right');
+        else if (k === oi) b.classList.add('wrong');
+    });
+    spEl('rd-q-fb-' + qi).innerHTML = (oi === correct ? '✅ Chính xác! ' : '❌ Chưa đúng. ') + (q.explanation ? spFmt(rdPlainText(q.explanation)) : '');
+}
+function rdExampleHtml(example, exampleVi) {
+    if (!example && !exampleVi) return '';
+    return '<div class="rd-ex">' + (example ? '<div>' + spEsc(example) + ' ' + spSayBtn(example) + '</div>' : '')
+        + (exampleVi ? '<div class="rd-ex-vi">' + spEsc(exampleVi) + '</div>' : '') + '</div>';
+}
+function rdRenderVocab() {
+    const st = rdState, list = spEl('rd-vocab-list'), btn = spEl('rd-vocab-btn');
+    if (!st.reading) { spEl('rd-vocab').style.display = 'none'; return; }
+    btn.disabled = st.busy;
+    if (st.busy) btn.innerHTML = '<span class="sp-spinner"></span> Đang tạo...';
+    else btn.textContent = st.data ? '🔄 Tạo lại' : (st.legacyHtml ? '✨ Tạo bản gọn' : '✨ Tạo từ vựng');
+    if (st.data) {
+        const d = st.data;
+        list.innerHTML = d.vocabulary.map(function(v) {
+            return '<details class="rd-item"><summary class="tappable"><b>' + spEsc(v.term) + '</b>' + (v.pos ? ' <span class="rd-pos">' + spEsc(v.pos) + '</span>' : '')
+                + (v.meaning_vi ? ': ' + spEsc(v.meaning_vi) : '') + '</summary>' + rdExampleHtml(v.example, v.example_vi) + '</details>';
+        }).join('')
+            + (d.structures.length ? '<div class="rd-sub-title">🏗️ Cấu trúc</div>' + d.structures.map(function(s) {
+                return '<details class="rd-item"><summary class="tappable"><b>' + spEsc(s.pattern) + '</b>' + (s.explain_vi ? ': ' + spEsc(s.explain_vi) : '')
+                    + '</summary>' + rdExampleHtml(s.example, s.example_vi) + '</details>';
+            }).join('') : '');
+    } else if (st.legacyHtml) {
+        list.innerHTML = '<details class="rd-item"><summary class="tappable">Xem từ vựng đã tạo trước đây (bản cũ)</summary><div class="rd-legacy">' + st.legacyHtml + '</div></details>';
+    } else {
+        list.innerHTML = '<div class="rd-hint">AI chọn 5 cụm từ + 2 cấu trúc đáng học trong bài. Sau đó bấm vào cụm được gạch chân trong bài để xem nghĩa.</div>';
+    }
+}
+function rdBuildPrompt() {
+    const st = rdState, r = st.reading, content = rdPlainText(r.content);
+    const zh = /[㐀-鿿]/.test(content);
+    return [
+        'You are a ' + (zh ? 'Chinese' : 'English') + ' teacher for Vietnamese learners. From the reading passage below, choose what is most worth learning so the learner remembers the target word "' + st.word + '" and can reuse the language of the passage.',
+        'VIETNAMESE MEANING OF THE TARGET WORD: ' + (spText('.definition-vi') || '(not given)'),
+        'PASSAGE TITLE: ' + rdPlainText(r.title),
+        'PASSAGE:\n"""\n' + content + '\n"""',
+        '',
+        'RULES:',
+        '- "vocabulary": exactly ' + RD_MAX_WORDS + ' items that appear in the passage. Prefer multi-word phrases and collocations (e.g. "draw up a plan", "long-term goals"), especially ones containing or naturally going with the target word; then useful single words. Do not pick the bare target word alone or very easy words.',
+        '  Each item: "term" (dictionary form, e.g. "draw up"' + (zh ? ', followed by pinyin in brackets' : '') + '), "in_text" (the EXACT words copied from the passage, same spelling), "pos" (short, e.g. n, v, adj, adv, phr v, colloc, idiom), "meaning_vi" (short Vietnamese meaning in this context), "example" (the sentence from the passage that contains it), "example_vi" (Vietnamese translation of that sentence).',
+        '- "structures": exactly ' + RD_MAX_STRUCTURES + ' useful grammar patterns used in the passage. Each: "pattern" (e.g. "be responsible for + V-ing"), "in_text" (exact words from the passage), "explain_vi" (one short Vietnamese sentence on how to use it), "example" (the sentence from the passage), "example_vi" (its Vietnamese translation).',
+        'Return JSON only.'
+    ].join('\n');
+}
+async function rdCreateVocab() {
+    const st = rdState;
+    if (!st || st.busy || !st.reading) return;
+    const token = st.token;
+    st.busy = true;
+    rdRenderVocab();
+    try {
+        const d = rdNormalizeData(await geminiGenerateJson(rdBuildPrompt(), RD_VOCAB_SCHEMA, 0.3));
+        if (!rdIsCurrent(token)) return;
+        if (!d.vocabulary.length) throw new Error('AI không chọn được từ vựng nào, thử lại nhé');
+        d.at = Date.now();
+        st.data = d;
+        st.legacyHtml = '';
+        spStoreSet(st.storeKey, d);
+        if (hasAnkiBridge()) {
+            pycmd('rv_save:' + JSON.stringify({ word: st.word, data: d }), function(res) {
+                if (res !== 'ok') console.warn('[Áp dụng] Không ghi được vào field Reading_Vocabulary:', res);
+            });
+        }
+        rdRenderReading();   // gạch chân các cụm vừa tạo trong bài
+    } catch (e) {
+        if (rdIsCurrent(token)) { console.error('[Áp dụng]', e); showPracticeMessage('❌ ' + e.message, 'error'); }
+    } finally {
+        if (rdIsCurrent(token)) { st.busy = false; rdRenderVocab(); }
+    }
+}
+
+/* ==================== EXERCISE FUNCTIONS - ĐÃ SỬA ==================== */
+function checkAnswer(index, correctAnswer) {
+    const inputElement = document.getElementById(`input-${index}`);
+    const exerciseItem = document.getElementById(`exercise-item-${index}`);
+    const explanationElement = document.getElementById(`explanation-${index}`);
+    
+    if (!inputElement || !exerciseItem) return;
+    
+    const userAnswer = inputElement.value.trim();
+    
+    // Xóa lớp cũ
+    exerciseItem.classList.remove('correct', 'incorrect');
+    
+    if (userAnswer.toLowerCase() === correctAnswer.toLowerCase()) {
+        exerciseItem.classList.add('correct');
+    } else {
+        exerciseItem.classList.add('incorrect');
+    }
+    
+    // Hiển thị giải thích
+    if (explanationElement) {
+        explanationElement.style.display = 'block';
+    }
+}
+
+function showAnswer(index, correctAnswer) {
+    const inputElement = document.getElementById(`input-${index}`);
+    const exerciseItem = document.getElementById(`exercise-item-${index}`);
+    const explanationElement = document.getElementById(`explanation-${index}`);
+    
+    if (inputElement) {
+        inputElement.value = correctAnswer;
+    }
+    
+    if (exerciseItem) {
+        exerciseItem.classList.remove('incorrect');
+        exerciseItem.classList.add('correct');
+    }
+    
+    if (explanationElement) {
+        explanationElement.style.display = 'block';
+    }
+}
+
+/* ==================== STORY (ẩn nếu không phải JSON) ==================== */
+function displayChineseStory() {
+    const el = document.getElementById('radicals-data');
+    const storyBox = document.getElementById('chinese-story-container');
+    const storyContent = document.getElementById('chinese-story-content');
+    const raw = (el?.textContent || '').trim();
+    if (!raw || !/^[\[{]/.test(raw)) { storyBox.style.display = 'none'; return; }
+
+    try {
+        const arr = JSON.parse(raw);
+        if (!Array.isArray(arr)) { storyBox.style.display = 'none'; return; }
+        let html = '';
+        arr.forEach(item => {
+            if (item?.type === 'memory_story' && item.content?.trim()) {
+                html += `<div class="character-story">
+                    <div class="story-text">
+                        <div style="font-weight:bold;color:#e74c3c;margin-bottom:10px;">📖 Câu chuyện chữ Hán:</div>
+                        ${item.content}
+                    </div>
+                </div><div class="story-separator">• • •</div>`;
+            }
+        });
+        if (html) {
+            html = html.replace(/<div class="story-separator">• • •<\/div>$/, '');
+            storyContent.innerHTML = html;
+            storyBox.style.display = 'block';
+        } else storyBox.style.display = 'none';
+    } catch { storyBox.style.display = 'none'; }
+}
+
+/* ==================== SPELL CHECK - TỰ ĐỘNG KIỂM TRA ==================== */
+function checkSpellingForBackSide(){
+    // Lấy từ đã lưu từ front template
+    let userInput = localStorage.getItem('userSpellingInput');
+    
+    // Nếu không có trong localStorage, thử lấy từ các element khác
+    if (!userInput) {
+        const tg = document.querySelector('.typeGood');
+        const tm = document.querySelector('.typeMissed');
+        const tp = document.querySelector('.typePartial');
+        if (tg) userInput = tg.textContent; 
+        else if (tm) userInput = tm.textContent; 
+        else if (tp) userInput = tp.textContent;
+    } else {
+        // Xóa sau khi đã lấy để tránh ảnh hưởng lần sau
+        localStorage.removeItem('userSpellingInput');
+    }
+
+    const correctWord = document.querySelector('.word')?.textContent?.trim() || '';
+    const resultDiv = document.getElementById('spellCheckResult');
+    const hintDiv = document.getElementById('spellCheckHint');
+
+    if (!userInput?.trim()){
+        resultDiv.innerHTML = '<span style="color:#666;">Bạn chưa nhập từ nào ở mặt trước</span>';
+        hintDiv.innerHTML = '💡 Hãy nhập từ ở mặt trước để kiểm tra chính tả';
+        return;
+    }
+
+    const input = userInput.trim();
+    const res = compareSpelling(correctWord, input);
+    displaySpellingResult(res, correctWord, input);
+}
+
+// Hàm so sánh chính tả giữ nguyên
+function compareSpelling(correct,input){
+    const r = {
+        isPerfectMatch: false,
+        isPartialMatch: false,
+        correctWord: correct,
+        userInput: input,
+        charResults: []
+    };
+    
+    if (input.toLowerCase() === correct.toLowerCase()){
+        r.isPerfectMatch = true;
+        r.charResults = input.split('').map(c => ({char: c, status: 'correct', position: 'exact'}));
+        return r;
+    }
+    
+    const maxLength = Math.max(correct.length, input.length);
+    for(let i = 0; i < maxLength; i++){
+        if(i >= input.length) break;
+        const ch = input[i];
+        let status = 'incorrect';
+        
+        if(i < correct.length){
+            const cc = correct[i];
+            if(ch.toLowerCase() === cc.toLowerCase()) status = 'correct';
+            else if(correct.toLowerCase().includes(ch.toLowerCase())) status = 'partial';
+        }
+        r.charResults.push({char: ch, status});
+    }
+    
+    r.isPartialMatch = r.charResults.some(c => c.status !== 'incorrect');
+    return r;
+}
+
+// Hàm hiển thị kết quả giữ nguyên
+function displaySpellingResult(result, correctWord, userInput){
+    const res = document.getElementById('spellCheckResult');
+    const hint = document.getElementById('spellCheckHint');
+
+    if(result.isPerfectMatch){
+        res.innerHTML = userInput.split('').map(c => `<span class="spell-check-char correct-char">${c}</span>`).join('');
+        hint.innerHTML = '✅ Chính xác! Từ được viết đúng chính tả.';
+        return;
+    }
+    
+    if(!result.isPartialMatch){
+        res.innerHTML = userInput.split('').map(c => `<span class="spell-check-char incorrect-char">${c}</span>`).join('');
+        hint.innerHTML = `❌ Sai hoàn toàn. Từ đúng là: <strong>${correctWord}</strong>`;
+        return;
+    }
+    
+    let html = '';
+    result.charResults.forEach(cr => {
+        let cls = 'spell-check-char ';
+        if(cr.status === 'correct') cls += 'correct-char';
+        else if(cr.status === 'partial') cls += 'partial-correct';
+        else cls += 'incorrect-char';
+        html += `<span class="${cls}">${cr.char}</span>`;
+    });
+    res.innerHTML = html;
+
+    const correctCount = result.charResults.filter(c => c.status === 'correct').length;
+    if(userInput.length < correctWord.length) {
+        hint.innerHTML = `⚠️ Thiếu ký tự. Từ đúng có ${correctWord.length} ký tự.`;
+    } else if(userInput.length > correctWord.length) {
+        hint.innerHTML = `⚠️ Thừa ký tự. Từ đúng có ${correctWord.length} ký tự.`;
+    } else {
+        hint.innerHTML = `🔍 Có ${correctCount}/${correctWord.length} ký tự đúng. Từ đúng: <strong>${correctWord}</strong>`;
+    }
+}
+
+/* ==================== Hanzi Writer & TTS ==================== */
+var hanziScript=document.createElement('script');
+hanziScript.src='https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js';
+document.head.appendChild(hanziScript);
+var writers=[]; var hanziWriterLoaded=false; var animationChainTimeout;
+hanziScript.onload=function(){hanziWriterLoaded=true;};
+
+
+/* ==================== Tabs & Modal ==================== */
+function openTab(evt,tabName){
+  var i,tabcontent,tablinks;
+  tabcontent=document.getElementsByClassName("tab-content");
+  for(i=0;i<tabcontent.length;i++){tabcontent[i].style.display="none";}
+  tablinks=document.getElementsByClassName("tab-link");
+  for(i=0;i<tablinks.length;i++){tablinks[i].className=tablinks[i].className.replace(" active","");}
+  document.getElementById(tabName).style.display="block";
+  evt.currentTarget.className+=" active";
+}
+
+function openStrokeAnimationModal(){
+  if(!hanziWriterLoaded){return;}
+  setupHanziWriterModal('stroke-order-container', `{{Word}}`, 'animation');
+  document.getElementById('stroke-order-modal').style.display='block';
+}
+
+function closeStrokeAnimationModal(){
+  clearTimeout(animationChainTimeout);
+  document.getElementById('stroke-order-modal').style.display='none';
+  writers.forEach(w=>{ if(w && typeof w.cancelQuiz==='function') w.cancelQuiz(); });
+  writers=[];
+}
+
+window.onclick=function(event){
+  const modal=document.getElementById('stroke-order-modal');
+  if(event.target==modal){ closeStrokeAnimationModal(); }
+}
+
+function openFanningStrokesModal(char) {
+    if (!hanziWriterLoaded) return;
+    setupHanziWriterModal('stroke-order-container', char, 'fanning');
+    document.getElementById('stroke-order-modal').style.display = 'block';
+}
+function setupHanziWriterModal(containerId,text,mode){
+  const container=document.getElementById(containerId);
+  const modalTitle=document.getElementById('modal-title');
+  container.innerHTML=''; writers=[]; clearTimeout(animationChainTimeout);
+  if(mode==='animation'){
+    modalTitle.textContent='Thứ tự nét vẽ';
+    for(let i=0;i<text.length;i++){
+      const char=text[i];
+      const charContainer=document.createElement('div');
+      charContainer.className='char-animation-container';
+      charContainer.innerHTML=`<h3>Chữ: ${char}</h3>
+        <div id="char-target-${i}" class="char-target"></div>
+        <div class="char-buttons">
+          <button onclick="writers[${i}].animateCharacter()">▶️ Vẽ lại</button>
+          <button onclick="writers[${i}].quiz()">✍️ Luyện tập</button>
+        </div>`;
+      container.appendChild(charContainer);
+      const writer=HanziWriter.create(`char-target-${i}`, char, {width:150,height:150,padding:5,showOutline:true,strokeAnimationSpeed:1,delayBetweenStrokes:100});
+      writers.push(writer);
+    }
+  }else if(mode==='fanning'){
+    modalTitle.innerHTML=`Quá trình hình thành chữ: <span class="analysis-char">${text}</span>`;
+    const fanning=document.createElement('div'); fanning.className='fanning-strokes-container'; container.appendChild(fanning);
+    HanziWriter.loadCharacterData(text).then(function(cd){
+      for(let i=0;i<cd.strokes.length;i++){
+        const div=document.createElement('div'); fanning.appendChild(div);
+        const portion=cd.strokes.slice(0,i+1); renderFanningStrokes(div,portion);
+      }
+    }).catch(function(err){ console.error('Lỗi tải dữ liệu chữ Hán:',err); });
+  }
+}
+
+function renderFanningStrokes(target,strokes){
+  var svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.style.width='80px'; svg.style.height='80px'; target.appendChild(svg);
+  var g=document.createElementNS('http://www.w3.org/2000/svg','g');
+  var tf=HanziWriter.getScalingTransform(80,80); g.setAttributeNS(null,'transform',tf.transform); svg.appendChild(g);
+  strokes.forEach(function(p){ var path=document.createElementNS('http://www.w3.org/2000/svg','path'); path.setAttributeNS(null,'d',p); path.style.fill='#555'; g.appendChild(path); });
+}
+
+/* ==================== Recommendation ==================== */
+function renderRecommendation(){
+  const recDataEl = document.getElementById('recommendation-data');
+  const recContainerEl = document.getElementById('recommendation-container');
+  if (!(recDataEl && recContainerEl && recDataEl.textContent.trim())) {
+    recContainerEl.innerHTML = `<div class="tab-item no-data"><div class="item-title">ℹ️ Thông tin</div><div class="item-content">Không có dữ liệu khuyến nghị cho từ này.</div></div>`;
+    return;
+  }
+  try {
+    const recData = JSON.parse(recDataEl.textContent);
+    let recHtml = '';
+    if (recData.use_context) recHtml += `<div class="tab-item recommend-use"><div class="item-title">🎯 Khi nào nên dùng</div><div class="item-content">${recData.use_context}</div></div>`;
+    if (recData.avoid_context) recHtml += `<div class="tab-item recommend-avoid"><div class="item-title">⚠️ Khi nào nên tránh</div><div class="item-content">${recData.avoid_context}</div></div>`;
+
+    // CẬP NHẬT PHẦN VÍ DỤ NGỮ CẢNH ĐỂ DÙNG TTS CHUẨN
+    if (recData.context_example_en) {
+      const mainWord = document.querySelector('.word')?.textContent || '';
+      const isChinese = /[\u4e00-\u9fff]/.test(mainWord);
+      let displayExample = recData.context_example_en;
+      let pinyinContent = '';
+      let speakText = recData.context_example_en;
+
+      if (isChinese) { 
+          const {hanzi,pinyin}=extractHanziAndPinyin(recData.context_example_en); 
+          displayExample=hanzi; 
+          pinyinContent=pinyin; 
+          speakText = hanzi; // Chỉ đọc phần Hán tự
+      } else {
+          displayExample = recData.context_example_en.replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
+          speakText = displayExample;
+      }
+      
+      // Escape dấu nháy đơn để tránh lỗi JS trong onclick
+      const safeText = speakText.replace(/'/g, "\\'");
+      
+            recHtml += `<div class="tab-item example-en">
+        <div class="item-title">💡 Ví dụ ngữ cảnh</div>
+        <div class="example-with-tts">
+            <div class="item-content">${displayExample}</div>
+            <button class="tts-btn gemini-btn" onclick="speakTextWithEdge('${safeText}', event)">🔊</button>
+            <button class="tts-btn edge-btn" onclick="speakWithEdgeReal('${safeText}', event)">⚡</button>
+        </div>
+        ${pinyinContent ? `<div class="item-content-pinyin">${pinyinContent}</div>` : ''}
+      </div>`;
+    }
+    
+    if (recData.context_example_vi) recHtml += `<div class="tab-item example-vi"><div class="item-title">📖 Nghĩa ví dụ</div><div class="item-content">${recData.context_example_vi}</div></div>`;
+    if (recData.learning_tip) recHtml += `<div class="tab-item learning-tip"><div class="item-title">🌟 Mẹo học tập</div><div class="item-content">${recData.learning_tip}</div></div>`;
+    if (recData.memory_aid) recHtml += `<div class="tab-item memory-aid"><div class="item-title">🔗 Gợi nhớ</div><div class="item-content">${recData.memory_aid}</div></div>`;
+    
+    recContainerEl.innerHTML = recHtml || `<div class="tab-item no-recommendation"><div class="item-title">ℹ️ Thông tin</div><div class="item-content">Không có khuyến nghị nào cho từ này.</div></div>`;
+  } catch (e) {
+    console.error('Lỗi parse JSON khuyến nghị:', e);
+    recContainerEl.innerHTML = `<div class="tab-item error"><div class="item-title">❌ Lỗi</div><div class="item-content">Không thể hiển thị khuyến nghị: ${e.message}</div></div>`;
+  }
+}/* ==================== Etymology ==================== */
+function renderEtymology(){
+  const etymologyDataEl = document.getElementById('etymology-data');
+  const etymologyContainerEl = document.getElementById('etymology-container');
+  if (!(etymologyDataEl && etymologyContainerEl)) return;
+  const content = etymologyDataEl.textContent.trim();
+  if (!content || content === '{}' || content === '[]' || content === '""') {
+    etymologyContainerEl.innerHTML = `<div class="tab-item no-data"><div class="item-title">ℹ️ Thông tin</div><div class="item-content">Không có dữ liệu gốc từ.</div></div>`;
+    return;
+  }
+  try{
+    const d = JSON.parse(content);
+    let html = '<div class="tab-item-group etymology"><div class="group-title">🌳 Gốc từ</div>';
+    let has = false;
+    if (d.origin && d.origin.language){
+      has = true;
+      html += `<div class="etymology-section"><div class="etymology-section-title">📜 Nguồn gốc</div><div class="etymology-origin-grid">`;
+      if (d.origin.language && d.origin.language!=="Source language") html += `<div class="origin-item"><span class="origin-label">Ngôn ngữ:</span><span class="origin-value">${d.origin.language}</span></div>`;
+      if (d.origin.original_form &&d.origin.original_form && d.origin.original_form!=="Original word form") html += `<div class="origin-item"><span class="origin-label">Dạng gốc:</span><span class="origin-value etymology-text">${d.origin.original_form}</span></div>`;
+      if (d.origin.period && d.origin.period!=="Historical period of origin") html += `<div class="origin-item"><span class="origin-label">Thời kỳ:</span><span class="origin-value">${d.origin.period}</span></div>`;
+      if (d.origin.first_attestation && d.origin.first_attestation!=="First recorded use") html += `<div class="origin-item"><span class="origin-label">Lần đầu xuất hiện:</span><span class="origin-value">${d.origin.first_attestation}</span></div>`;
+      html += `</div></div>`;
+    }
+    if (d.structure){
+      let hasS=false, sHtml=`<div class="etymology-section"><div class="etymology-section-title">🏗️ Cấu trúc từ</div><div class="etymology-structure-grid">`;
+      if (d.structure.prefix?.element && d.structure.prefix.element!=="Prefix element if applicable"){
+        hasS=true; sHtml+=`<div class="structure-part prefix"><div class="structure-type">Tiền tố</div><div class="structure-element">${d.structure.prefix.element}</div><div class="structure-meaning">${d.structure.prefix.meaning||''}</div>${d.structure.prefix.origin?`<div class="structure-origin">${d.structure.prefix.origin}</div>`:''}</div>`;
+      }
+      if (d.structure.root?.element && d.structure.root.element!=="Root element if applicable"){
+        hasS=true; sHtml+=`<div class="structure-part root"><div class="structure-type">Gốc từ</div><div class="structure-element">${d.structure.root.element}</div><div class="structure-meaning">${d.structure.root.meaning||''}</div>${d.structure.root.origin?`<div class="structure-origin">${d.structure.root.origin}</div>`:''}</div>`;
+      }
+      if (d.structure.suffix?.element && d.structure.suffix.element!=="Suffix element if applicable"){
+        hasS=true; sHtml+=`<div class="structure-part suffix"><div class="structure-type">Hậu tố</div><div class="structure-element">${d.structure.suffix.element}</div><div class="structure-meaning">${d.structure.suffix.meaning||''}</div>${d.structure.suffix.origin?`<div class="structure-origin">${d.structure.suffix.origin}</div>`:''}</div>`;
+      }
+      sHtml+=`</div></div>`; if(hasS){ html+=sHtml; has=true; }
+    }
+    if (d.meaning_development){
+      let hasM=false, mHtml=`<div class="etymology-section"><div class="etymology-section-title">🔄 Phát triển nghĩa</div><div class="meaning-development">`;
+      if (d.meaning_development.original && d.meaning_development.original!=="Original meaning in English"){hasM=true; mHtml+=`<div class="meaning-stage"><div class="meaning-era">Nghĩa gốc:</div><div class="meaning-text">${d.meaning_development.original}</div></div>`;}
+      if (d.meaning_development.evolution && d.meaning_development.evolution!=="Historical development in English"){hasM=true; mHtml+=`<div class="meaning-stage"><div class="meaning-era">Quá trình phát triển:</div><div class="meaning-text">${d.meaning_development.evolution}</div></div>`;}
+      if (d.meaning_development.modern && d.meaning_development.modern!=="Current meaning in English"){hasM=true; mHtml+=`<div class="meaning-stage"><div class="meaning-era">Nghĩa hiện đại:</div><div class="meaning-text">${d.meaning_development.modern}</div></div>`;}
+      mHtml+=`</div></div>`; if(hasM){ html+=mHtml; has=true; }
+    }
+    if (d.verification && d.verification!=="Based on Oxford English Dictionary and academic sources"){ html+=`<div class="etymology-section"><div class="etymology-section-title">✅ Xác thực</div><div class="verification-info">${d.verification}</div></div>`; has=true; }
+    if (Array.isArray(d.sources) && d.sources.length>0 && !d.sources.every(s=>s.includes("Dictionary"))){
+      html+=`<div class="etymology-section"><div class="etymology-section-title">📚 Nguồn tham khảo</div><div class="sources-list">${d.sources.map(s=>`<div class="source-item">• ${s}</div>`).join('')}</div></div>`; has=true;
+    }
+    html+='</div>';
+    etymologyContainerEl.innerHTML = has ? html :
+      `<div class="tab-item no-data"><div class="item-title">ℹ️ Thông tin</div><div class="item-content">Không có thông tin gốc từ.</div></div>`;
+  }catch(e){
+    console.error('Lỗi parse etymology data:', e);
+    etymologyContainerEl.innerHTML = `<div class="tab-item error"><div class="item-title">❌ Lỗi</div><div class="item-content">Không thể hiển thị gốc từ: ${e.message}</div></div>`;
+  }
+}
+
+/* ==================== Lists (synonyms/antonyms/...) ==================== */
+/* ==================== Lists (synonyms/antonyms/...) ==================== */
+function renderLists(){
+  const map = {
+    'synonyms': { title: 'Từ đồng nghĩa', cssClass: 'synonyms' },
+    'antonyms': { title: 'Từ trái nghĩa', cssClass: 'antonyms' },
+    'wordfamily': { title: 'Word Family', cssClass: 'word-family' },
+    'collocations': { title: 'Collocations', cssClass: 'collocations' },
+    'phrasalverbs': { title: 'Phrasal Verbs', cssClass: 'phrasal-verbs' },
+    'idioms': { title: 'Idioms', cssClass: 'idioms' },
+  };
+  for (const key in map) {
+    const cfg = map[key];
+    const dataEl = document.getElementById(`${key}-data`);
+    const containerEl = document.getElementById(`${key}-container`);
+    if (!(dataEl && containerEl && dataEl.textContent.trim())) continue;
+    containerEl.innerHTML='';
+    try{
+      const arr = JSON.parse(dataEl.textContent);
+      if (Array.isArray(arr) && arr.length>0){
+        let html = `<div class="tab-item-group ${cfg.cssClass}"><div class="group-title">${cfg.title}</div>`;
+        arr.forEach(item=>{
+          const safeWord = (item.word || '').replace(/'/g, "\\'");
+          html += `<div class="item-list" style="margin-bottom: 15px; padding: 12px; background: #f9f9f9; border-radius: 8px; border-left: 3px solid #2196F3; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <div class="item-list-word" style="font-size: 1.1em; font-weight: bold; margin-bottom: 5px;">
+                ${item.word} <span class="item-list-pos" style="color: #666; font-weight: normal; font-size: 0.9em;">(${item.pos || ''})</span>
+                <button class="tts-btn-small" onclick="speakWithGemini('${safeWord}', event)" title="Nghe (Gemini)">🔊</button>
+                <button class="tts-btn-small" onclick="speakWithEdgeReal('${safeWord}', event)" title="Nghe (Edge)">⚡</button>
+            </div>
+            ${item.meaning_vi ? `<div class="item-list-meaning" style="color: #d32f2f; margin-bottom: 5px;"><strong>Nghĩa:</strong> ${item.meaning_vi}</div>` : ''}
+            ${item.example ? `<div class="item-list-example" style="color: #333; margin-bottom: 3px;"><strong>VD:</strong> <em>${item.example}</em></div>` : ''}
+            ${item.example_vi ? `<div class="item-list-translation" style="color: #2e7d32;"><strong>Dịch:</strong> ${item.example_vi}</div>` : ''}
+          </div>`;
+        });
+        html += `</div>`;
+        containerEl.innerHTML = html;
+      }
+    }catch(e){ console.error(`Error parsing ${key}:`, e); }
+  }
+}
+
+/* ==================== Grammar notes ==================== */
+function renderGrammar(){
+  const dataEl = document.getElementById('grammar-notes-data');
+  const containerEl = document.getElementById('grammar-notes-container');
+  if (!(dataEl && containerEl && dataEl.textContent.trim())) return;
+  try{
+    const d = JSON.parse(dataEl.textContent);
+    let html = '';
+    if (d.classification){
+      html += `<div class="tab-item-group grammar-notes">
+        <div class="group-title">📚 Lưu ý Ngữ pháp</div>
+        <div class="grammar-box"><div class="grammar-box-title">Phân loại</div><div class="grammar-box-content">${d.classification}</div></div>
+        ${d.explanation_vi?`<div class="grammar-box"><div class="grammar-box-title">Giải thích</div><div class="grammar-box-content">${d.explanation_vi}</div></div>`:''}
+        ${d.usage_note?`<div class="grammar-box"><div class="grammar-box-title">Lưu ý sử dụng</div><div class="grammar-box-content">${d.usage_note}</div></div>`:''}
+      </div>`;
+    }
+    containerEl.innerHTML = html;
+  }catch(e){ console.error('Error parsing grammar notes:', e); }
+}
+
+/* ==================== Usage patterns ==================== */
+/* ==================== Usage patterns (CẬP NHẬT) ==================== */
+function renderUsage(){
+  const dataEl = document.getElementById('usage-patterns-data');
+  const containerEl = document.getElementById('usage-patterns-container');
+  if (!(dataEl && containerEl && dataEl.textContent.trim())) return;
+  try{
+    const d = JSON.parse(dataEl.textContent);
+    let html = '';
+    const mainWord = document.querySelector('.word')?.textContent || '';
+    const isChinese = /[\u4e00-\u9fff]/.test(mainWord);
+
+    // Hàm nhỏ để tạo nút TTS
+    const createTTS = (text) => {
+        const safeText = text.replace(/'/g, "\\'");
+        return `<button class="tts-btn-small" onclick="speakTextWithEdge('${safeText}', event)" title="Nghe câu này">🔊</button>`;
+    };
+
+    if (d.writing_patterns && d.writing_patterns.length>0){
+      html += `<div class="tab-item-group usage-writing"><div class="group-title">✍️ Mẫu câu trong văn viết</div>`;
+      d.writing_patterns.forEach(item=>{
+        let display = item.sentence; let pin = ''; let audioText = item.sentence;
+        
+        if (isChinese){ 
+            const {hanzi,pinyin}=extractHanziAndPinyin(item.sentence); 
+            display=hanzi; pin=pinyin; audioText=hanzi;
+        } else {
+            display = item.sentence.replace(/\([^)]*\)/g,'').replace(/\s+/g,' ').trim();
+            audioText = display;
+        }
+        
+        html += `<div class="item-list">
+            <div class="item-list-example">${display} ${createTTS(audioText)}</div>
+            ${pin?`<div class="item-list-pinyin">${pin}</div>`:''}
+            <div class="item-list-translation">${item.translation}</div>
+            ${item.grammar_note?`<div class="grammar-analysis">${item.grammar_note}</div>`:''}
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    if (d.spoken_examples && d.spoken_examples.length>0){
+      html += `<div class="tab-item-group usage-spoken"><div class="group-title">🗣️ Câu giao tiếp hàng ngày</div>`;
+      d.spoken_examples.forEach(item=>{
+        let display = item.sentence; let pin = ''; let audioText = item.sentence;
+        
+        if (isChinese){ 
+            const {hanzi,pinyin}=extractHanziAndPinyin(item.sentence); 
+            display=hanzi; pin=pinyin; audioText=hanzi;
+        } else {
+            display = item.sentence.replace(/\([^)]*\)/g,'').replace(/\s+/g,' ').trim();
+            audioText = display;
+        }
+        
+        html += `<div class="item-list">
+            <div class="item-list-example">${display} ${createTTS(audioText)}</div>
+            ${pin?`<div class="item-list-pinyin">${pin}</div>`:''}
+            <div class="item-list-translation">${item.translation}</div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    containerEl.innerHTML = html;
+  }catch(e){ console.error('Error parsing usage patterns:', e); }
+}
+
+/* ==================== RADICALS ==================== */
+function renderRadicals() {
+  const dataEl = document.getElementById('radicals-data');
+  const containerEl = document.getElementById('radicals-container');
+  const mainWord = document.querySelector('.word')?.textContent?.trim() || '';
+  
+  if (!containerEl) return;
+
+  if (!mainWord) {
+    containerEl.innerHTML = `<div class="no-radicals-message"><div class="item-title">ℹ️ Thông tin</div><div class="item-content">Không có từ để phân tích.</div></div>`;
+    return;
+  }
+
+  const raw = (dataEl?.textContent || '').trim();
+  
+  if (!raw || raw === '{}' || raw === '[]') {
+    createDefaultRadicalAnalysis(mainWord, containerEl);
+    return;
+  }
+
+  if (/^[\[{]/.test(raw)) {
+    try {
+      const data = JSON.parse(raw);
+      renderRadicalsFromJSON(data, mainWord, containerEl);
+    } catch (e) {
+      console.warn('Radicals JSON parse failed, using default analysis:', e);
+      createDefaultRadicalAnalysis(mainWord, containerEl);
+    }
+  } else {
+    containerEl.innerHTML = `<div class="tab-item radicals-fallback">${raw}</div>`;
+  }
+}
+
+function createDefaultRadicalAnalysis(word, containerEl) {
+  let html = '';
+  
+  for (let i = 0; i < word.length; i++) {
+    const char = word[i];
+    
+    html += `
+      <div class="character-analysis">
+        <div class="analysis-header">
+          <h3 class="analysis-title">Phân tích chữ: <span class="analysis-char">${char}</span></h3>
+          <div class="char-stroke-count" onclick="openFanningStrokesModal('${char}')">
+            ✍️ ${getStrokeCount(char)} nét
+          </div>
+        </div>
+        
+        <div class="character-construction">
+          <div class="construction-title">🏗️ Quá trình hình thành chữ:</div>
+          <div class="stroke-breakdown">
+            ${generateStrokeBreakdown(char)}
+          </div>
+        </div>
+        
+        <div class="character-meaning">
+          <div class="meaning-title">📖 Ý nghĩa tổng quan:</div>
+          <div class="meaning-content">${getCharacterMeaning(char)}</div>
+        </div>
+      </div>
+    `;
+  }
+  
+  containerEl.innerHTML = html || `
+    <div class="no-radicals-message">
+      <div class="item-title">ℹ️ Thông tin</div>
+      <div class="item-content">Không có thông tin phân tích chữ Hán cho từ "${word}".</div>
+    </div>
+  `;
+}
+
+function renderRadicalsFromJSON(data, mainWord, containerEl) {
+  const arr = Array.isArray(data) ? data : [data];
+  let finalHtml = '';
+
+  // AI hiện trả về danh sách bộ thủ: {character, name_vi, name, meaning_vi, meaning, stroke_count, position, variant}
+  // Dữ liệu kiểu cũ (phân tích từng chữ) có overall_explanation_vi/components -> vẫn hiển thị như trước
+  const isRadicalItem = it => it && it.type !== 'memory_story' && !it.components && !it.overall_explanation_vi
+    && (it.name_vi || it.meaning_vi || it.position || it.name || it.meaning);
+  const radicalItems = arr.filter(isRadicalItem);
+
+  if (radicalItems.length > 0) {
+    finalHtml += `
+      <div class="character-analysis">
+        <div class="analysis-header">
+          <h3 class="analysis-title">Bộ thủ trong chữ: <span class="analysis-char">${mainWord}</span></h3>
+        </div>
+        <div class="components-list">`;
+    radicalItems.forEach(r => {
+      const name = r.name_vi || r.name || '';
+      const extraName = (r.name && r.name !== name) ? ` (${r.name})` : '';
+      const strokes = parseInt(r.stroke_count, 10);
+      finalHtml += `
+          <div class="component-item">
+            <div class="component-char">${r.character || ''}</div>
+            <div class="component-details">
+              <div class="component-header">
+                <span class="component-pinyin">${name}${extraName}</span>
+                ${strokes > 0 ? `<span class="component-role other">${strokes} nét</span>` : ''}
+              </div>
+              <div class="component-meaning">${r.meaning_vi || r.meaning || ''}</div>
+              ${r.position ? `<div class="component-meaning">📍 Vị trí: ${r.position}</div>` : ''}
+              ${r.variant ? `<div class="component-meaning">🔁 Biến thể: ${r.variant}</div>` : ''}
+            </div>
+          </div>`;
+    });
+    finalHtml += `
+        </div>
+      </div>`;
+  }
+
+  arr.forEach((analysis, index) => {
+    if (analysis?.type === 'memory_story' || isRadicalItem(analysis)) return;
+
+    const ch = analysis?.character?.trim() || mainWord[index] || mainWord;
+    if (!ch) return;
+
+    const strokeCount = (analysis?.stroke_count || getStrokeCount(ch)).toString().trim();
+    
+    finalHtml += `
+      <div class="character-analysis">
+        <div class="analysis-header">
+          <h3 class="analysis-title">Phân tích chữ: <span class="analysis-char">${ch}</span></h3>
+          ${strokeCount ? `
+            <div class="char-stroke-count" onclick="openFanningStrokesModal('${ch}')">
+              ✍️ ${strokeCount} nét
+            </div>
+          ` : ''}
+        </div>
+        
+        <div class="character-construction">
+          <div class="construction-title">🏗️ Quá trình hình thành chữ:</div>
+          <div class="stroke-breakdown">
+            ${analysis?.overall_explanation_vi || generateStrokeBreakdown(ch)}
+          </div>
+        </div>
+    `;
+
+    if (Array.isArray(analysis?.components) && analysis.components.length > 0 && !analysis.is_pictograph) {
+      finalHtml += `<div class="components-list">`;
+      analysis.components.forEach(comp => {
+        if (!comp) return;
+        const role = comp.role || '';
+        const roleClass = role.includes('Nghĩa') ? 'semantic' : (role.includes('Âm') ? 'phonetic' : 'other');
+        finalHtml += `
+          <div class="component-item">
+            <div class="component-char">${comp.component || ''}</div>
+            <div class="component-details">
+              <div class="component-header">
+                <span class="component-pinyin">${comp.pinyin || ''}</span>
+                <span class="component-role ${roleClass}">${role}</span>
+              </div>
+              <div class="component-meaning">${comp.meaning_vi || comp.meaning || ''}</div>
+            </div>
+          </div>
+        `;
+      });
+      finalHtml += `</div>`;
+    }
+
+    finalHtml += `</div>`;
+  });
+
+  if (finalHtml) {
+    containerEl.innerHTML = finalHtml;
+  } else {
+    // Chỉ có câu chuyện ghi nhớ (hoặc không có gì) -> phân tích mặc định, không gán kết quả undefined
+    createDefaultRadicalAnalysis(mainWord, containerEl);
+  }
+}
+
+function getStrokeCount(char) {
+  const strokeMap = {
+    '爱': '13', '友': '4', '你': '7', '好': '6', '我': '7',
+    '是': '9', 'の': '8', '一': '1', '二': '2', '三': '3',
+    '人': '2', '大': '3','爱': '13', '友': '4', 	'你': '7', 
+		'好': '6', '我': '7','是': '9', 'の': '8', '一': '1', 
+		'二': '2', '三': '3','人': '2', '大': '3', '小': '3', 
+		'中': '4', '国': '8','了': '2', '不': '4', '在': '6', '有': '6', '他': '5'
+    };
+    return strokeMap[char] || '?';
+}
+
+function generateStrokeBreakdown(char) {
+    const breakdowns = {
+        '爱': 'Chữ 爱 (ái) gồm các nét: bắt đầu bằng nét ngang, nét móc, nét phẩy, nét mác... thể hiện tình cảm từ trái tim.',
+        '友': 'Chữ 友 (hữu) gồm 4 nét: hai nét ngang và hai nét xéo, tượng trưng cho hai bàn tay cùng hợp tác.',
+        '人': 'Chữ 人 (nhân) gồm 2 nét: nét phẩy và nét mác, tượng hình người đang đứng.',
+        '好': 'Chữ 好 (hảo) gồm 6 nét: kết hợp bộ nữ (phụ nữ) và bộ tử (con cái), thể hiện sự tốt đẹp.',
+        '我': 'Chữ 我 (ngã) gồm 7 nét: phức tạp với nhiều nét ngang, sổ và móc, biểu thị bản thân.',
+        '是': 'Chữ 是 (thị) gồm 9 nét: kết hợp nhiều bộ thủ, biểu thị sự khẳng định.'
+    };
+    
+    return breakdowns[char] || `Chữ ${char} được hình thành qua từng nét bút theo quy tắc viết chữ Hán truyền thống.`;
+}
+
+function getCharacterMeaning(char) {
+    const meanings = {
+        '爱': 'Tình yêu, sự yêu thương',
+        '友': 'Bạn bè, tình bạn',
+        '人': 'Con người, nhân loại',
+        '好': 'Tốt, đẹp, hay',
+        '我': 'Tôi, ta, bản thân',
+        '是': 'Là, phải, đúng'
+    };
+    
+    return meanings[char] || `Chữ ${char} trong từ "${document.querySelector('.word')?.textContent}"`;
+}
+
+/* ==================== Exercises ==================== */
+function renderExercises(){
+    const dataEl = document.getElementById('exercises-data');
+    const containerEl = document.getElementById('exercises-container');
+    if (!(dataEl && containerEl && dataEl.textContent.trim())) return;
+    try{
+        const ex = JSON.parse(dataEl.textContent);
+        if (!Array.isArray(ex) || ex.length===0 || !ex[0].question) return;
+        let html = '<div class="exercises-section"><h3 class="exercises-title">📝 Bài tập vận dụng</h3>';
+        ex.forEach((it,idx)=>{
+            let q = it.question.replace(/\d{9,}/g,'___').replace(/123456789/g,'___');
+            const parts = q.split('___');
+            if (parts.length>1){ q = parts[0] + '___' + parts.slice(1).join(`<span class="answer-placeholder">[đáp án]</span>`); }
+            const qHtml = q.replace(/___/, `<span class="input-wrapper"><input type="text" id="input-${idx}" class="exercise-input tappable" placeholder="Điền từ thích hợp" oninput="this.parentNode.dataset.value = this.value" onkeydown="if(event.key==='Enter') checkAnswer(${idx}, '${it.answer.replace(/'/g, "\\'")}')"></span>`);
+            html += `<div class="exercise-item" id="exercise-item-${idx}">
+                <div class="exercise-type-badge" data-type="${it.type}">${it.type}</div>
+                <div class="exercise-question">${qHtml}</div>
+                <div class="exercise-controls">
+                    <button class="check-button" onclick="checkAnswer(${idx}, '${it.answer.replace(/'/g,"\\'")}')">Kiểm tra</button>
+                    <button class="show-answer-button" onclick="showAnswer(${idx}, '${it.answer.replace(/'/g,"\\'")}')">Đáp án</button>
+                </div>
+                <div class="exercise-feedback">
+                    <div class="exercise-translation">${it.translation_vi}</div>
+                    <div class="exercise-explanation" id="explanation-${idx}" style="display:none;">
+                        <strong>Đáp án: ${it.answer}</strong><br>
+                        <strong>Từ loại: ${it.answer_pos}</strong><br>
+                        ${it.explanation_vi}
+                    </div>
+                </div>
+            </div>`;
+        });
+        html += '</div>';
+        containerEl.innerHTML = html;
+    }catch(e){ console.error('Error parsing exercises:', e); }
+}
+
+// ==================== SỬA HÀM ADD TTS BUTTONS ====================
+function addTTSButtonsToAllWords(){
+  document.querySelectorAll('.item-list-word').forEach(el=>{
+    const wordText=el.textContent.split(' (')[0].trim();
+    if(wordText && !el.querySelector('.tts-btn-small')){
+      const b=document.createElement('button'); 
+      b.className='tts-btn-small'; 
+      b.innerHTML='🔊'; 
+      b.title=`Nghe phát âm: ${wordText}`;
+      b.onclick=(e)=>{
+        e.stopPropagation(); 
+        speakWithGemini(wordText, e);
+      };
+      el.appendChild(b);
+    }
+  });
+}
+
+// ==================== CẬP NHẬT HỆ THỐNG KHÓA CHO NÚT MỚI ====================
+function initializeTabLock() {
+    const LOCK_PASSWORD = "1";
+    const STORAGE_KEY = "gem_section_unlocked_v1";
+    const lockedSections = ['BoSung', 'MoRong', 'Radicals', 'ApDung'];
+
+    // Kiểm tra trạng thái đã mở từ localStorage
+    const savedUnlocked = localStorage.getItem(STORAGE_KEY) === "1";
+    window.__gem_sections_unlocked = savedUnlocked;
+
+    let currentTabToOpen = null;
+
+    function applyLockState() {
+        const unlocked = !!window.__gem_sections_unlocked;
+
+        lockedSections.forEach(sectionId => {
+            const element = document.getElementById(sectionId);
+            if (!element) return;
+
+            if (!element.classList.contains('gem-sec-wrap')) {
+                element.classList.add('gem-sec-wrap');
+            }
+
+            if (unlocked) {
+                element.classList.remove('gem-sec-locked');
+                const existingOverlay = element.querySelector('.gem-sec-overlay');
+                if (existingOverlay) {
+                    existingOverlay.remove();
+                }
+                
+                element.style.pointerEvents = 'auto';
+                element.style.userSelect = 'auto';
+                element.style.filter = 'none';
+                element.style.webkitFilter = 'none';
+            } else {
+                element.classList.add('gem-sec-locked');
+                if (!element.querySelector('.gem-sec-overlay')) {
+                    const overlay = document.createElement('div');
+                    overlay.className = 'gem-sec-overlay';
+                    overlay.innerHTML = '🔒 ĐÃ KHOÁ<br><small>Nhấp vào tab và nhập mật khẩu để mở</small>';
+                    element.appendChild(overlay);
+                }
+            }
+        });
+
+        updateTabLockIcons();
+        updateLockButton();
+    }
+
+    function updateTabLockIcons() {
+        const unlocked = !!window.__gem_sections_unlocked;
+        const lockedTabNames = {
+            'BoSung': '➕ Bổ sung',
+            'MoRong': '🚀 Mở rộng', 
+            'Radicals': '🖌️ Bộ',
+            'ApDung': '📝 Áp dụng'
+        };
+
+        Object.keys(lockedTabNames).forEach(sectionId => {
+            const tabLinks = document.querySelectorAll('.tab-link');
+            tabLinks.forEach(tabLink => {
+                const tabText = tabLink.textContent || tabLink.innerText;
+                const targetText = lockedTabNames[sectionId];
+                
+                if (tabText.includes(targetText.replace(' 🔒', '').replace(' 🔓', ''))) {
+                    // Biểu tượng 🔒/🔓 do CSS (.tab-link.locked::after) thêm vào, không chèn thêm vào chữ
+                    tabLink.innerHTML = targetText;
+                    tabLink.classList.toggle('locked', !unlocked);
+                    tabLink.classList.toggle('unlocked', unlocked);
+                }
+            });
+        });
+    }
+
+    function showPasswordModal(title, message, tabToOpen = null) {
+        currentTabToOpen = tabToOpen;
+        document.getElementById('gem-password-title').textContent = title;
+        document.getElementById('gem-password-message').textContent = message;
+        document.getElementById('gem-password-input').value = '';
+        document.getElementById('auto-unlock-feedback').classList.remove('show');
+        document.getElementById('password-error').classList.remove('show');
+        document.getElementById('gem-password-modal').style.display = 'flex';
+        
+        setTimeout(() => {
+            const input = document.getElementById('gem-password-input');
+            input.focus();
+        }, 100);
+    }
+
+    function hidePasswordModal() {
+        document.getElementById('gem-password-modal').style.display = 'none';
+        currentTabToOpen = null;
+    }
+
+    function showPasswordError() {
+        const errorElement = document.getElementById('password-error');
+        errorElement.classList.add('show');
+        setTimeout(() => {
+            errorElement.classList.remove('show');
+        }, 3000);
+    }
+
+    function autoUnlock() {
+        const feedback = document.getElementById('auto-unlock-feedback');
+        feedback.classList.add('show');
+        
+        setTimeout(() => {
+            window.__gem_sections_unlocked = true;
+            localStorage.setItem(STORAGE_KEY, "1");
+            applyLockState();
+            hidePasswordModal();
+            
+            if (currentTabToOpen) {
+                setTimeout(() => {
+                    openTabDirectly(currentTabToOpen);
+                }, 300);
+            }
+        }, 500);
+    }
+
+    function openTabDirectly(tabName) {
+        const tabcontent = document.getElementsByClassName("tab-content");
+        for (let i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        
+        const tablinks = document.getElementsByClassName("tab-link");
+        for (let i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        
+        const targetTab = document.getElementById(tabName);
+        if (targetTab) {
+            targetTab.style.display = "block";
+            
+            const targetTabLink = document.querySelector(`.tab-link[onclick*="${tabName}"]`);
+            if (targetTabLink) {
+                targetTabLink.className += " active";
+            }
+        }
+    }
+
+    function setupPasswordModal() {
+        const modal = document.getElementById('gem-password-modal');
+        const input = document.getElementById('gem-password-input');
+        const confirmBtn = document.getElementById('gem-password-confirm');
+        const cancelBtn = document.getElementById('gem-password-cancel');
+
+        input.addEventListener('input', function(e) {
+            const password = e.target.value;
+            if (password === LOCK_PASSWORD) {
+                autoUnlock();
+            }
+        });
+
+        const handleConfirm = function() {
+            const password = input.value;
+            if (password === LOCK_PASSWORD) {
+                autoUnlock();
+            } else {
+                showPasswordError();
+                input.value = '';
+                input.focus();
+            }
+        };
+
+        const handleCancel = function() {
+            hidePasswordModal();
+        };
+
+        confirmBtn.addEventListener('click', handleConfirm);
+        cancelBtn.addEventListener('click', handleCancel);
+
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleConfirm();
+            }
+        });
+
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                handleCancel();
+            }
+        });
+    }
+
+    function createLockButton() {
+        if (document.getElementById('gem-lock-toggle-btn')) return;
+        
+        const lockBtn = document.createElement('button');
+        lockBtn.id = 'gem-lock-toggle-btn';
+        document.body.appendChild(lockBtn);
+        
+        const handleLockButtonClick = function() {
+            if (window.__gem_sections_unlocked) {
+                window.__gem_sections_unlocked = false;
+                localStorage.setItem(STORAGE_KEY, "0");
+                applyLockState();
+            } else {
+                showPasswordModal('🔐 MỞ KHOÁ', 'Nhập mật khẩu để mở khoá tất cả tab:');
+            }
+        };
+        
+        lockBtn.addEventListener('click', handleLockButtonClick);
+        lockBtn.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            handleLockButtonClick();
+        });
+        
+        updateLockButton();
+    }
+
+    function updateLockButton() {
+        const btn = document.getElementById('gem-lock-toggle-btn');
+        if (!btn) return;
+        
+        if (window.__gem_sections_unlocked) {
+            btn.innerHTML = '🔓 ĐANG MỞ<br>Bấm để khoá';
+            btn.classList.remove('gem-locked');
+            btn.classList.add('gem-open');
+        } else {
+            btn.innerHTML = '🔒 ĐANG KHOÁ<br>Bấm để mở';
+            btn.classList.remove('gem-open');
+            btn.classList.add('gem-locked');
+        }
+    }
+
+    function setupTabInterception() {
+        const tabLinks = document.querySelectorAll('.tab-link');
+        tabLinks.forEach(link => {
+            const onclickAttr = link.getAttribute('onclick') || '';
+            const match = onclickAttr.match(/openTab\(event,\s*'(\w+)'\)/);
+            if (!match) return;
+            
+            const targetTab = match[1];
+            if (!lockedSections.includes(targetTab)) return;
+
+            const handleTabClick = function(e) {
+                if (!window.__gem_sections_unlocked) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showPasswordModal('🔐 MỞ KHOÁ', `Nhập mật khẩu để mở tab "${getTabDisplayName(targetTab)}":`, targetTab);
+                }
+            };
+
+            link.addEventListener('click', handleTabClick);
+            link.addEventListener('touchend', function(e) {
+                if (!window.__gem_sections_unlocked) {
+                    e.preventDefault();
+                    handleTabClick(e);
+                }
+            });
+        });
+    }
+
+    function getTabDisplayName(tabId) {
+        const names = {
+            'BoSung': 'Bổ sung',
+            'MoRong': 'Mở rộng',
+            'Radicals': 'Bộ',
+            'LuyenCau': 'Luyện câu',
+            'ApDung': 'Áp dụng'
+        };
+        return names[tabId] || tabId;
+    }
+
+    function initLockSystem() {
+        createLockButton();
+        setupPasswordModal();
+        applyLockState();
+        setupTabInterception();
+
+        setTimeout(applyLockState, 500);
+    }
+
+    setTimeout(initLockSystem, 100);
+}
+
+
+// Gọi hàm khởi tạo khoá sau khi mọi thứ đã tải
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeTabLock);
+} else {
+    initializeTabLock();
+}
+
+// Hàm trích xuất Hán tự và Pinyin
+function extractHanziAndPinyin(text) {
+    let hanzi = text, pinyin = '';
+    const matches = text.match(/\(([^)]+)\)/g);
+    if (matches) {
+        hanzi = text.replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
+        pinyin = matches.map(m => m.slice(1, -1)).join(' ').replace(/\s+/g, ' ').trim();
+    }
+    return {hanzi, pinyin};
+}
+
+function processChineseExample(){
+  const exEl=document.getElementById('example-en-data'); if(!exEl) return;
+  const exampleEn=exEl.textContent;
+  const mainWord=document.querySelector('.word')?.textContent||'';
+  const isChinese=/[\u4e00-\u9fff]/.test(mainWord);
+  const hanziElement=document.getElementById('example-hanzi');
+  const pinyinElement=document.getElementById('example-pinyin');
+  const ttsBtn=document.getElementById('example-tts-btn');
+
+  if(hanziElement && pinyinElement && ttsBtn){
+    if(isChinese && exampleEn){
+      const {hanzi,pinyin}=extractHanziAndPinyin(exampleEn);
+      hanziElement.textContent=hanzi;
+      if(pinyin){ pinyinElement.textContent=pinyin; pinyinElement.style.display='block'; }
+      else pinyinElement.style.display='none';
+      ttsBtn.onclick=function(event){ 
+          event.stopPropagation();
+          speakChineseText(event, exampleEn); 
+      };
+    }else{
+      hanziElement.textContent=exampleEn;
+      pinyinElement.style.display='none';
+      ttsBtn.onclick=function(event){ 
+          event.stopPropagation();
+          speakTextWithEdge(exampleEn, event); 
+      };
+    }
+  }
+}
+
+/* ==================== THẺ NHẸ: ẨN TAB TRỐNG + NÚT ĐIỀN ĐẦY ĐỦ ==================== */
+// Tab không có dữ liệu (xem #tab-has-data) thì ẩn cả nút lẫn nội dung. Luyện câu luôn hiện (AI trong thẻ tự ra đề).
+// Thẻ không có ví dụ, bài đọc, mở rộng = thẻ thêm nhanh -> hiện banner "✨ Thêm chi tiết".
+function liteSetupTabs() {
+    var hidden = {};
+    document.querySelectorAll('#tab-has-data [data-tab]').forEach(function(mark) {
+        if (!mark.textContent.trim()) hidden[mark.getAttribute('data-tab')] = true;
+    });
+    document.querySelectorAll('.tabs .tab-link').forEach(function(btn) {
+        var m = (btn.getAttribute('onclick') || '').match(/openTab\(event,\s*'(\w+)'\)/);
+        if (!m || !hidden[m[1]]) return;
+        btn.style.display = 'none';
+        var content = document.getElementById(m[1]);
+        if (content) content.style.display = 'none';
+    });
+    if (hidden.ViDu && hidden.MoRong && hidden.ApDung) {
+        document.getElementById('lite-banner').style.display = 'block';
+    }
+}
+
+function liteFillFull() {
+    var btn = document.getElementById('lite-fill-btn');
+    var note = document.getElementById('lite-note');
+    if (!hasAnkiBridge()) {
+        // AnkiMobile / AnkiDroid không chạy add-on -> điền trên máy tính rồi đồng bộ về
+        note.textContent = '📱 Điện thoại chưa thêm chi tiết được. Hãy mở thẻ này trên máy tính, bấm ✨ Thêm chi tiết, rồi đồng bộ (Sync).';
+        return;
+    }
+    var word = (document.querySelector('.word') || {}).textContent || '';
+    btn.disabled = true;
+    btn.textContent = '⏳ Đang thêm chi tiết... (khoảng 1 phút)';
+    note.textContent = 'AI đang viết ví dụ, bài đọc, bài tập, ảnh. Xong thẻ sẽ tự hiện đủ.';
+    pycmd('fill_full:' + JSON.stringify({ word: word.trim() }), function(res) {
+        if (res === 'started') return;
+        btn.disabled = false;
+        btn.textContent = '✨ Thêm chi tiết';
+        note.textContent = res === 'word_mismatch' ? '⚠️ Thẻ đã đổi, mở lại thẻ rồi thử lại.' : '❌ Chưa thêm được chi tiết (' + res + ')';
+    });
+}
+
+/* ==================== Render all ==================== */
+function renderJsonData(){
+    // 1. Xử lý các phần hiển thị cơ bản trước
+    liteSetupTabs();
+    processChineseExample();
+    
+    // 2. Các hàm khởi tạo có thể nặng, đưa vào setTimeout để không chặn UI
+    setTimeout(() => {
+        if(typeof checkSpellingForBackSide === 'function') checkSpellingForBackSide();
+        if(typeof displayChineseStory === 'function') displayChineseStory();
+        if(typeof spInit === 'function') spInit();
+        if(typeof rdInit === 'function') rdInit();
+    }, 50);
+
+    // 3. Render các nội dung chi tiết
+    setTimeout(() => {
+        if(typeof renderEtymologyExamples === 'function') renderEtymologyExamples();
+        if(typeof displayContextInBoSung === 'function') displayContextInBoSung();
+        
+        if(typeof renderRecommendation === 'function') renderRecommendation();
+        if(typeof renderEtymology === 'function') renderEtymology();
+        if(typeof renderLists === 'function') renderLists();
+        if(typeof renderGrammar === 'function') renderGrammar();
+        if(typeof renderUsage === 'function') renderUsage();
+        if(typeof renderRadicals === 'function') renderRadicals();
+        if(typeof renderExercises === 'function') renderExercises();
+        if(typeof renderOtherMeanings === 'function') renderOtherMeanings();
+    }, 150);
+
+    // 4. Thêm nút TTS cuối cùng
+    setTimeout(() => {
+        if(typeof addTTSButtonsToAllWords === 'function') addTTSButtonsToAllWords();
+        // AnkiMobile (iPhone) chỉ cho chạm vào nút/liên kết/phần tử có class "tappable":
+        // thiếu class này thì chạm vào ô nhập không hiện bàn phím (phải đè lâu)
+        document.querySelectorAll('input, textarea, select, summary').forEach(function(el) { el.classList.add('tappable'); });
+    }, 500);
+}
+
+if(document.readyState==="loading"){ 
+    document.addEventListener("DOMContentLoaded", renderJsonData); 
+} else { 
+    renderJsonData(); 
+}
+
+</script>
+
+{{#Domain_Tag}}
+<div style="
+    display: flex; 
+    gap: 10px; 
+    margin-top: 15px; 
+    flex-wrap: wrap; 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    
+    <span style="
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background-color: #ede7f6; /* Deep Purple 50 */
+        color: #512da8; /* Deep Purple 700 */
+        border: 1px solid #d1c4e9;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85em;
+        font-weight: 600;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+        <span style="font-size: 1.1em;">🏷️</span> {{Domain_Tag}}
+    </span>
+
+    <span style="
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background-color: #fff3e0; /* Orange 50 */
+        color: #e65100; /* Orange 900 */
+        border: 1px solid #ffe0b2;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85em;
+        font-weight: 600;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+        <span style="font-size: 1.1em;">📊</span> {{Difficulty_Tag}}
+    </span>
+</div>
+{{/Domain_Tag}}
+
+<hr style="margin: 20px 0; border: 1px solid #ddd;">
+
+<button class="toggle-section-btn" onclick="toggleSection('extra-drills-wrapper')" style="width: 100%;">📝 Bài tập thêm (Dịch thuật & Phiên dịch) ▼</button>
+<div id="extra-drills-wrapper" class="collapsible-section" style="display: none;">
+    <!-- Phần bài tập dịch -->
+    <div id="translation-drill-section" style="margin: 20px 0; padding: 15px; border: 2px solid #4CAF50; border-radius: 10px; background: #f9f9f9;">
+        <h4 style="color: #2E7D32; margin-top: 0; margin-bottom: 15px;">📝 Bài tập dịch thuật</h4>
+        <p style="color: #555; margin-bottom: 15px;">Tạo bài tập dịch với từ khóa này để luyện tập:</p>
+        
+        <button 
+            id="generate-translation-btn"
+            onclick="pycmd('generate_translation_drill')"
+            style="
+                background: #4CAF50;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: bold;
+                margin-right: 10px;
+            "
+            onmouseover="this.style.background='#388E3C'"
+            onmouseout="this.style.background='#4CAF50'"
+        >
+            📝 Tạo bài tập dịch
+        </button>
+
+        <div id="translation-drill-container" style="margin-top: 15px;"></div>
+    </div>
+
+    <!-- Phần bài tập phiên dịch -->
+    <div id="interpreting-drill-section" style="margin: 20px 0; padding: 15px; border: 2px solid #9C27B0; border-radius: 10px; background: #f9f9f9;">
+        <h4 style="color: #7B1FA2; margin-top: 0; margin-bottom: 15px;">🎤 Bài tập phiên dịch</h4>
+        <p style="color: #555; margin-bottom: 15px;">Tạo bài tập phiên dịch thực tế với tình huống giao tiếp:</p>
+        
+        <button 
+            id="generate-interpreting-btn"
+            onclick="pycmd('generate_interpreting_drill')"
+            style="
+                background: #9C27B0;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: bold;
+                margin-right: 10px;
+            "
+            onmouseover="this.style.background='#7B1FA2'"
+            onmouseout="this.style.background='#9C27B0'"
+        >
+            🎤 Tạo bài tập phiên dịch
+        </button>
+
+        <div id="interpreting-drill-container" style="margin-top: 15px;"></div>
+    </div>
+</div>
+
+
+<style>
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+        40% {transform: translateY(-5px);}
+        60% {transform: translateY(-2px);}
+    }
+    
+    #generate-translation-btn:hover, #generate-interpreting-btn:hover {
+        animation: bounce 0.5s;
+    }
+    
+    @media (max-width: 768px) {
+        #generate-translation-btn, #generate-interpreting-btn {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 12px;
+            font-size: 16px;
+        }
+    }
+</style>

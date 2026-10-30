@@ -1,0 +1,8 @@
+{
+    "name": "Gemini Flashcard Generator",
+    "package": "gemini_flashcard_gen",
+    "version": "1.0.0",
+    "author": "Anki Add-on Developer",
+    "description": "An advanced Anki add-on to automatically generate flashcard content using Google Gemini AI.",
+    "homepage": "https://ankiweb.net/shared/addons/"
+}
