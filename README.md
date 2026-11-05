@@ -23,6 +23,8 @@ It is designed primarily for **Vietnamese learners of English**. Beside, Japanes
     - [🖱️ Anki Browser Context Menu](#️-anki-browser-context-menu)
   - [🧭 Using Context to Guide Results](#-using-context-to-guide-results)
   - [🔄 API Key and Usage Limit Management](#-api-key-and-usage-limit-management)
+  - [🗂️ Starter Deck and Card Design](#️-starter-deck-and-card-design)
+  - [📦 Publishing to AnkiWeb (for the developer)](#-publishing-to-ankiweb-for-the-developer)
   - [📖 Offline Dictionary](#-offline-dictionary)
 
 ## 🚀 Key Features
@@ -33,6 +35,7 @@ It is designed primarily for **Vietnamese learners of English**. Beside, Japanes
 - **Image generation:** Creates images related to vocabulary to make words easier to visualize and remember.
 - **Pronunciation audio:** Generates spoken audio for words or learning content. Supported languages include English, Vietnamese, Chinese, Japanese, Korean, and German.
 - **Bulk card creation:** Paste a vocabulary list to create multiple flashcards at once instead of entering each word individually.
+- **Duplicate check before using AI:** Words that already exist in your deck are detected first, so no AI quota is spent on them. You will see: *"Từ vựng [word] này đã tồn tại trong bộ thẻ [deck], vui lòng thêm từ khác."* In bulk adding, existing words (and repeated words in the list) are skipped and listed for you.
 - **Bulk card updates:** Select existing cards in Anki Browser to add missing information or improve their content.
 - **Reading passage generation:** Creates a short passage using the target vocabulary, then identifies related vocabulary and grammar structures in the passage.
 - **Sentence practice:** Checks sentences you write and suggests ways to make them more natural and accurate. Feedback is provided in Vietnamese.
@@ -53,7 +56,7 @@ It is designed primarily for **Vietnamese learners of English**. Beside, Japanes
 
 ## ⚡ Quick Start
 
-1. Open the **Add** window in Anki or the card editor in **Browser**.
+1. Open the **Add** window in Anki and choose the deck and note type **Gemini Vocabulary** (created automatically on first run), or open the card editor in **Browser**.
 2. Enter the word you want to study in the **Word** field. For example: `stakeholder`.
 3. Press **Ctrl + G** or click the ✨ button on the toolbar.
 4. The add-on analyzes the word and fills in the relevant information. If automatic image generation is enabled, it will also create an illustration.
@@ -65,30 +68,38 @@ You can find all settings under **Tools → Gemini Editor Settings…**.
 
 ### 🔑 AI Provider and API Key Setup
 
-- **Google Gemini API Keys:** Nhập một hoặc nhiều API Key, mỗi Key nằm trên một dòng. Tiện ích sẽ tự động luân phiên sử dụng các Key khi cần. Bạn có thể tạo API Key tại [Google AI Studio](https://aistudio.google.com/).
+- **Google Gemini API Keys:** Nhập một hoặc nhiều API Key, mỗi Key nằm trên một dòng. Tiện ích sẽ tự động luân phiên sử dụng các Key khi cần. Bạn có thể tạo API Key miễn phí tại [Google AI Studio](https://aistudio.google.com/api-keys). Hạn mức miễn phí tính theo dự án Google, nên các key cùng một dự án dùng chung một hạn mức; hãy tạo mỗi key ở một dự án khác nhau để tăng lượt dùng thật sự.
 - **Gemini Model:** Chọn mô hình Gemini dùng để tạo nội dung. Mô hình mặc định là `gemini-3.8-flash`. Nếu mô hình này không khả dụng, tiện ích sẽ thử các mô hình dự phòng đã được thiết lập.
 - **Timeout:** Thiết lập thời gian tối đa chờ AI phản hồi, tính bằng giây. Mặc định là 300 giây.
-- **Groq Cloud:** Bạn có thể chọn Groq làm nhà cung cấp AI thay thế. Để sử dụng, chọn Provider là `groq`, nhập API Key lấy từ [Groq Console](https://console.groq.com/keys) và chọn mô hình phù hợp, ví dụ `llama-3.3-70b-versatile`.
+- **Groq Cloud:** Bạn có thể chọn Groq làm nhà cung cấp AI thay thế. Để sử dụng, chọn Provider là `groq`, nhập API Key lấy từ [Groq Console](https://console.groq.com/keys) và chọn mô hình phù hợp, ví dụ `llama-3.3-70b-versatile` (xem [danh sách mô hình](https://console.groq.com/docs/models)).
 
 ### 🖼️ Image Generation Settings
 
-Tiện ích hỗ trợ nhiều nguồn tạo hoặc tìm hình ảnh. Bạn có thể để hệ thống tự chọn nguồn phù hợp hoặc thiết lập thứ tự ưu tiên.
+Tiện ích có hai nguồn tạo hình minh họa. Bạn có thể để hệ thống tự chọn (khuyên dùng) hoặc chọn một nguồn cố định.
 
 | Image source | Cost / requirements | Description |
 | --- | --- | --- |
-| **Pollinations (Flux)** | Free | Generates images quickly and with good quality, but may occasionally return server errors. An optional Pollen Key can be added. |
-| **AI Horde** | Free | Uses community GPU resources. It is generally stable, but image generation can take longer (around 60 seconds). |
-| **Hugging Face Inference** | Free tier available | Requires a Hugging Face token and may have usage limits. |
-| **Google Search (CSE)** | Free tier available | Finds images through Google Custom Search. Requires an API Key and Search Engine ID. |
-| **Google Imagen** | Paid | Generates images using Google's Imagen model. Requires an API Key with billing enabled. |
+| **Pollinations (Flux)** | **Paid with "Pollen"**, requires a secret key (`sk_…`) | Beautiful, fast images. Each image costs a small amount of Pollen. Get a key at [enter.pollinations.ai/keys](https://enter.pollinations.ai/keys). You can top up, or complete the **Quests** on that site to earn free Pollen. When the Pollen runs out the service answers with error 402 and the add-on moves on to AI Horde. |
+| **AI Horde** | Free, no account needed | Uses community GPU resources. Stable, but an image can take 30–90 seconds. |
 
-You can set your preferred image source, enable or disable automatic image generation, and enter the required keys for each service. If you do not need to customize these options, we recommend keeping automatic source selection enabled.
+- **Auto (recommended):** uses Pollinations first if you entered a valid key, otherwise goes straight to AI Horde. If Pollinations fails (for example, no Pollen left), it falls back to AI Horde.
+- Keys that are masked (contain `****`) are ignored.
+- You can turn automatic image generation on or off in the same settings group.
 
 ### 🔊 Text-to-Speech Settings
 
-- **TTS API Key:** Leave this blank to reuse your main Gemini API Key.
+- **TTS API Key:** Leave this blank to reuse the main Gemini API Key.
 - **TTS Model:** Select the model used to generate speech. The default is `gemini-2.5-flash-preview-tts`.
-- **Voice:** Choose a preferred voice, such as `Kore`, `Fenrir`, `Puck`, `Zephyr`, `Aoede`, or `Charon`. If left blank, the system selects a suitable voice automatically.
+- The voice is chosen automatically from the language of the text.
+
+### 🃏 Keys for Practice Buttons on the Card
+
+The sentence-practice buttons (and 🔊) run inside the card itself, including on your phone, where the add-on does not run. So the add-on writes the keys into a small media file (`_avg_card_keys.js`), which Anki syncs to your phone.
+
+- **You only need to enter your Gemini key once** in the top box. If the "API dùng cho luyện câu" box or the TTS box is empty, the add-on reuses the top key.
+- After changing keys: press **Save** in Settings, then **Sync** on the computer, then **Sync** on the phone.
+- Fill these boxes only if you want separate keys (for example, to keep some daily quota for practice on your phone).
+- Do not share the media file when you share a deck, because it contains your keys.
 
 ## 🎯 How to Use
 
@@ -122,7 +133,7 @@ You can set your preferred image source, enable or disable automatic image gener
 | **📝 Cập nhật template cho tab Áp dụng** | Adds fields for displaying vocabulary extracted from a reading passage to the current card template. |
 | **🔄 Thêm nút bài tập dịch vào template** | Adds buttons for accessing translation and interpreting exercises to the card template. |
 | **⬆️ Upgrade Note Type** | Adds the fields needed for specialized content, such as translation and interpreting exercises, subject areas, and difficulty levels. |
-| **📚 Hướng dẫn sử dụng Context** | Opens a guide explaining how to provide context to guide AI-generated results. |
+| **📚 Hướng dẫn sử dụng add-on** | Opens a plain-language user guide with tabs: getting started, adding words, buttons, context hints, Tools menu and troubleshooting. The text lives in `guide_content.py`. |
 
 ### 🖱️ Anki Browser Context Menu
 
@@ -151,6 +162,25 @@ Common part-of-speech abbreviations:
 - `v` or `verb`: verb
 - `adj` or `adjective`: adjective
 - `adv` or `adverb`: adverb
+
+## 🗂️ Starter Deck and Card Design
+
+The first time you open Anki after installing the add-on, it creates a ready-to-use note type and deck, both named **Gemini Vocabulary**:
+
+- 37 fields (word, pronunciation, meanings, examples, exercises, reading, translation drills, tags, ...).
+- Front template, back template and the full card styling (CSS), taken from `front template.txt`, `back_template.txt` and `styling.txt`.
+- It runs only once per collection. If your collection already has a note type with the fields `Word`, `Definition_VI` and `Exercises`, nothing is created, so existing setups are never duplicated.
+- Translation-drill buttons are not part of the starter back template; add them with **Tools → 🔄 Thêm nút bài tập dịch vào template** if you want them.
+
+## 📦 Publishing to AnkiWeb (for the developer)
+
+Never zip the add-on folder by hand: it contains `meta.json` (your settings, including API keys), `.bak` backups and `user_files/`. Instead run:
+
+```bash
+python build_ankiaddon.py
+```
+
+The script copies only an allow-list of files, forces `config.json` to contain no keys, then scans the whole package for your real keys (taken from `meta.json`, `.bak` files and `user_files/`) and for anything that looks like an API key. If it finds one it stops and creates nothing. On success the package is `dist/auto_vocab_gemini.ankiaddon`, which is the only file to upload.
 
 ## 🔄 API Key and Usage Limit Management
 
