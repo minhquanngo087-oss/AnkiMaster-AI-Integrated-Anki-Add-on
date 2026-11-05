@@ -2,6 +2,7 @@
   "enabled": true,
   "api_key": "",
   "model": "gemini-2.5-flash",
+  "tts_model": "gemini-2.5-flash-preview-tts",
   "auto_fill_on_review": true,
   "auto_hint": true,
   "gemini_daily_limits": {

@@ -35,7 +35,7 @@ A powerful Anki add-on that leverages Google's Gemini AI and multiple image gene
 ## Building and Running
 
 ### For Users
-1.  Copy the `147430828` folder into your Anki add-ons directory.
+1.  Copy the `auto_vocab_gemini` folder into your Anki add-ons directory.
 2.  Restart Anki.
 3.  Configure your Google Gemini API key(s) in `Tools -> Gemini Editor Settings`.
 

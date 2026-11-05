@@ -819,34 +819,7 @@
     border-radius: 8px;
     margin: 10px 0;
 }
-.auto-unlock-feedback {
-    color: #4CAF50;
-    font-weight: bold;
-    font-size: 14px;
-    margin-top: 10px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.auto-unlock-feedback.show {
-    opacity: 1;
-}
-
 /* Thông báo lỗi mật khẩu */
-.password-error {
-    color: #f44336;
-    font-weight: bold;
-    font-size: 14px;
-    margin-top: 10px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.password-error.show {
-    opacity: 1;
-}
-
-
 .sentence-practice-container .fb-wrap{display:block}
 .sentence-practice-container .fb-box{transition:max-height .2s ease; overflow:hidden;}
 .sentence-practice-container .fb-box.is-collapsed{max-height:110px;}
@@ -2688,34 +2661,7 @@
     border-radius: 8px;
     margin: 10px 0;
 }
-.auto-unlock-feedback {
-    color: #4CAF50;
-    font-weight: bold;
-    font-size: 14px;
-    margin-top: 10px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.auto-unlock-feedback.show {
-    opacity: 1;
-}
-
 /* Thông báo lỗi mật khẩu */
-.password-error {
-    color: #f44336;
-    font-weight: bold;
-    font-size: 14px;
-    margin-top: 10px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.password-error.show {
-    opacity: 1;
-}
-
-
 .sentence-practice-container .fb-wrap{display:block}
 .sentence-practice-container .fb-box{transition:max-height .2s ease; overflow:hidden;}
 .sentence-practice-container .fb-box.is-collapsed{max-height:110px;}

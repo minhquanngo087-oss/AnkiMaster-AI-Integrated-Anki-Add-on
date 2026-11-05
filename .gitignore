@@ -22,3 +22,6 @@ meta.json.bak*
 
 # Error logs (generated at runtime)
 editor_error_log.txt
+
+# Đóng gói AnkiWeb
+dist/

@@ -7,7 +7,7 @@ from aqt.qt import (
     QComboBox, QInputDialog, Qt, QProgressBar,
     QGroupBox, QSpinBox, QCheckBox, QMessageBox,
     QScrollArea, QWidget, QTextEdit, QTextBrowser,
-    QTreeWidget, QTreeWidgetItem
+    QTreeWidget, QTreeWidgetItem, QTabWidget
 )
 from aqt.editor import Editor
 from aqt.browser import Browser
@@ -23,49 +23,9 @@ import wave
 import io
 
 
-# ========== HUGGING FACE IMAGE GENERATION ==========
-# Token lấy từ Cài đặt (config "hf_token"), KHÔNG ghi thẳng vào code.
-# Endpoint cũ api-inference.huggingface.co đã bị Hugging Face khai tử (trả 410),
-# nên dùng router mới: https://router.huggingface.co/hf-inference/models/<model>
-HF_ROUTER_URL = "https://router.huggingface.co/hf-inference/models/"
-HF_MODELS_TO_TRY = [
-    "black-forest-labs/FLUX.1-dev",              # Chất lượng cao nhất
-    "black-forest-labs/FLUX.1-schnell",          # Flux bản nhanh
-    "stabilityai/stable-diffusion-xl-base-1.0",  # SDXL dự phòng
-]
-
-def generate_image_huggingface(prompt, config=None):
-    """
-    Tạo ảnh qua Hugging Face Inference (router mới).
-    Thử lần lượt các model trong HF_MODELS_TO_TRY, trả về bytes ảnh hoặc None.
-    """
-    if config is None:
-        config = load_config()
-    token = str(config.get("hf_token") or "").strip()
-    if not token.startswith("hf_"):
-        print("⚠️ [HF] Chưa cấu hình Hugging Face Token trong Cài đặt.")
-        return None
-
-    headers = {"Authorization": f"Bearer {token}"}
-
-    for model_id in HF_MODELS_TO_TRY:
-        payload = {"inputs": prompt}
-        if "FLUX" in model_id:
-            payload["parameters"] = {"width": 1024, "height": 1024}
-        print(f"🚀 [HF] {model_id}: '{prompt[:60]}...'")
-        try:
-            response = requests.post(HF_ROUTER_URL + model_id, headers=headers, json=payload, timeout=90)
-            content_type = response.headers.get("Content-Type", "")
-            if response.status_code == 200 and "image" in content_type:
-                print(f"✅ [HF] Tạo ảnh thành công bằng {model_id}")
-                return response.content
-            print(f"⚠️ [HF] {model_id} lỗi {response.status_code}: {response.text[:150]}")
-        except Exception as e:
-            print(f"❌ [HF] {model_id} lỗi kết nối: {e}")
-
-    return None
-
 # ========== CẤU HÌNH ==========
+IMAGE_ENGINES = ["auto", "pollinations", "horde"]
+
 def load_config():
     config = mw.addonManager.getConfig(__name__)
     defaults = {
@@ -75,14 +35,11 @@ def load_config():
         "voice_name": "",
         "tts_api_key": "",
         "tts_model": "gemini-2.5-flash-preview-tts",
-        "image_api_key": "",
-        "image_model": "gemini-2.0-flash",
+        "card_api_keys": [],    # key cho AI trong thẻ (Luyện câu, Áp dụng) - ghi ra file media cho thẻ đọc
+        "tts_api_keys": [],     # key đọc phát âm (nút 🔊 trên thẻ + tạo audio)
         "auto_image_gen": True,
         "timeout": 300,
-        "hf_token": "",  # Thêm Hugging Face token
-        "google_cse_key": "", # Google Custom Search API Key
-        "google_cse_cx": "",  # Google Custom Search Engine ID
-        "image_engine_priority": "pollinations",  # pollinations, hf, or auto
+        "image_engine_priority": "auto",  # auto, pollinations, horde
         "image_quality": "medium",  # low, medium, high
         "text_provider": "gemini",  # gemini or groq
         "groq_api_keys": [],
@@ -127,7 +84,25 @@ def load_config():
     if str(config.get("model") or "").strip() in ("", "gemini-2.0-flash", "gemini-2.0-flash-exp", "gemini-1.5-flash", "gemini-1.5-pro"):
         config["model"] = GEMINI_DEFAULT_MODEL
 
+    # Key bị che (AQ.Ab8****j8IQ) không gọi được Google: nếu bản đầy đủ đang nằm ở khung khác thì thay vào
+    if isinstance(config.get("api_keys"), list):
+        config["api_keys"] = [unmask_key(k, config) for k in config["api_keys"]]
+
     return config
+
+def unmask_key(key, config):
+    """Trả về bản đầy đủ của key bị che (đầu****đuôi) nếu tìm thấy trong các khung key khác, không thì giữ nguyên."""
+    key = str(key).strip()
+    if "****" not in key:
+        return key
+    head, _, tail = key.partition("****")
+    for name in ("card_api_keys", "tts_api_keys", "groq_api_keys"):
+        value = config.get(name) or []
+        for full in (value.splitlines() if isinstance(value, str) else value):
+            full = str(full).strip()
+            if "*" not in full and len(full) > len(key) and full.startswith(head) and full.endswith(tail):
+                return full
+    return key
 
 def save_config(config):
     mw.addonManager.writeConfig(__name__, config)
@@ -473,6 +448,53 @@ def normalize_word_for_compare(text):
     text = _INVISIBLE_CHARS_RE.sub("", text)
     text = text.strip(" \t\"'“”‘’.,;:!?()[]{}").lower()
     return re.sub(r"\s+", " ", text)
+
+# ========== LỌC TỪ ĐÃ CÓ TRONG BỘ THẺ (chạy TRƯỚC khi gọi API để khỏi tốn lượt) ==========
+def find_existing_words(words):
+    """Trả về {từ đã chuẩn hoá: tên bộ thẻ} cho những từ ĐÃ CÓ trong bộ thẻ (so theo field Word)."""
+    found = {}
+    if not getattr(mw, "col", None):
+        return found
+    for w in words:
+        key = normalize_word_for_compare(w)
+        if not key or key in found:
+            continue
+        esc = key.replace("\\", "\\\\").replace('"', '\\"').replace("*", "\\*").replace("_", "\\_")
+        try:
+            nids = mw.col.find_notes(f'"Word:*{esc}*"')
+            for nid in nids:
+                note = mw.col.get_note(nid)
+                if "Word" in note and normalize_word_for_compare(note["Word"]) == key:
+                    cards = note.cards()
+                    found[key] = mw.col.decks.name(cards[0].did) if cards else "?"
+                    break
+        except Exception as e:
+            log_error(f"Lỗi kiểm tra từ trùng '{w}': {e}")
+    return found
+
+def existing_word_message(word, deck):
+    return f"Từ vựng [{word}] này đã tồn tại trong bộ thẻ [{deck}], vui lòng thêm từ khác."
+
+def drop_existing_words(entries, get_word=lambda e: e):
+    """Bỏ các từ đã có trong bộ thẻ (và từ lặp lại trong chính danh sách) TRƯỚC khi gọi API.
+    Trả về danh sách còn lại; nếu có từ bị bỏ thì báo cho người dùng biết."""
+    existing = find_existing_words([get_word(e) for e in entries])
+    kept, skipped, seen = [], [], set()
+    for e in entries:
+        word = get_word(e)
+        key = normalize_word_for_compare(word)
+        if key in existing:
+            skipped.append(f"• [{word}] → bộ thẻ [{existing[key]}]")
+        elif key in seen:
+            continue
+        else:
+            seen.add(key)
+            kept.append(e)
+    if skipped:
+        shown = "\n".join(skipped[:30]) + (f"\n… và {len(skipped) - 30} từ nữa" if len(skipped) > 30 else "")
+        tail = "Các từ còn lại sẽ được thêm bình thường." if kept else "Không còn từ nào để thêm, vui lòng thêm từ khác."
+        showInfo(f"Những từ này đã tồn tại trong bộ thẻ nên đã được bỏ qua (không tốn lượt AI):\n\n{shown}\n\n{tail}")
+    return kept
 
 def _is_inflection_of(a, b):
     """True nếu a và b chỉ khác nhau ở đuôi biến đổi thông dụng
@@ -1624,11 +1646,8 @@ class ImageRetryDialog(QDialog):
     Engine lỗi = nút cha (đỏ), các engine còn lại = nút con để chọn thử lại.
     """
     ENGINE_INFO = {
-        "pollinations":  ("🚀 Pollinations (Flux)",  "Nhanh, cần Pollen key"),
+        "pollinations":  ("🚀 Pollinations (Flux)",  "Trả phí bằng Pollen, cần key"),
         "horde":         ("🆓 AI Horde",              "Miễn phí hoàn toàn, chậm ~60s"),
-        "hf":            ("🤗 Hugging Face",           "Free tier, hay bị giới hạn"),
-        "google_search": ("🔍 Google Search",          "Cần CSE Key"),
-        "google":        ("🎨 Google Imagen",          "Cần Paid API Key"),
     }
 
     def __init__(self, parent, failed_engine: str, error_msg: str = ""):
@@ -1718,12 +1737,20 @@ def run_gemini_fill_for_editor(editor: Editor):
         tooltip("⚠️ Vui lòng nhập từ vựng vào trường 'Word'!")
         return
 
+    # Đang thêm thẻ MỚI (chưa lưu, id = 0): từ đã có trong bộ thẻ thì dừng, không gọi AI.
+    # Thẻ đã có sẵn (mở từ Browser để điền lại) thì không chặn.
+    if getattr(note, "id", 0) == 0:
+        deck = find_existing_words([word]).get(normalize_word_for_compare(word))
+        if deck:
+            showInfo(existing_word_message(word, deck))
+            return
+
     config = load_config()
 
     # Tự động tìm Context người dùng nhập (nếu có)
     context_fields = ["Context", "Ngữ cảnh", "Topic", "Chủ đề", "Situation", "Tình huống", "Context/Topic"]
     user_context = clean_field_text(get_note_field_value(note, context_fields))
-    
+
     msg_context = f" (Context: {user_context[:15]}...)" if user_context else ""
     tooltip(f"⚡ Gemini đang phân tích: {word}{msg_context}...")
 
@@ -1956,80 +1983,164 @@ class BatchAddDialog(QDialog):
         self.accept()
 
 def show_context_usage_guide():
-    """Hiển thị hướng dẫn sử dụng Context"""
-    guide_text = """
-🎯 <strong>CÁCH SỬ DỤNG CONTEXT NÂNG CAO</strong>
+    """Cửa sổ hướng dẫn sử dụng add-on (nhiều tab). Nội dung chữ nằm trong guide_content.py."""
+    from .guide_content import GUIDE_SECTIONS
 
-<strong>1. NGỮ CẢNH THÔNG THƯỜNG:</strong>
-• business meeting
-• medical terminology  
-• academic writing
-
-<strong>2. CHỦ ĐỀ TỰ ĐỘNG:</strong>
-• technology → tự mở rộng: công nghệ, máy tính, phần mềm
-• medical → tự mở rộng: y tế, bệnh viện, sức khỏe
-• education → tự mở rộng: học tập, giáo dục, trường học
-
-<strong>3. LOẠI TỪ CỤ THỂ:</strong>
-• run [verb] → chỉ phân tích nghĩa động từ của "run"
-• light [noun] → chỉ phân tích nghĩa danh từ của "light"  
-• fast [adj] → chỉ phân tích nghĩa tính từ của "fast"
-• quickly [adv] → chỉ phân tích nghĩa trạng từ của "quickly"
-
-<strong>4. KẾT HỢP:</strong>
-• business meeting [noun] → ngữ cảnh + loại từ
-• run a business [verb] → cụm từ + loại từ
-
-<strong>CÚ PHÁP LOẠI TỪ:</strong>
-• Từ [noun] hoặc Từ (noun)
-• Từ [verb] hoặc Từ (verb) 
-• Từ [adj] hoặc Từ (adj)
-• Từ [adv] hoặc Từ (adv)
-
-<strong>VIẾT TẮT:</strong>
-• n hoặc noun → danh từ
-• v hoặc verb → động từ
-• adj hoặc adjective → tính từ
-• adv hoặc adverb → trạng từ
-
-<strong>VÍ DỤ THỰC TẾ:</strong>
-1. "apple [noun]" → chỉ lấy nghĩa danh từ (quả táo)
-2. "light [adj]" → chỉ lấy nghĩa tính từ (nhẹ, sáng)
-3. "run business [verb]" → phân tích "run" như động từ trong ngữ cảnh kinh doanh
-4. "fast technology" → phân tích "fast" trong ngữ cảnh công nghệ
-"""
-    
     dialog = QDialog(mw)
-    dialog.setWindowTitle("📚 Hướng dẫn sử dụng Context")
-    dialog.resize(500, 600)
-    
-    layout = QVBoxLayout()
-    
-    # Scroll area cho nội dung dài
-    scroll_area = QScrollArea()
-    scroll_area.setWidgetResizable(True)
-    
-    content_widget = QWidget()
-    content_layout = QVBoxLayout(content_widget)
-    
-    text_label = QLabel(guide_text)
-    text_label.setWordWrap(True)
-    text_label.setTextFormat(Qt.TextFormat.RichText)
-    text_label.setStyleSheet("font-size: 13px; line-height: 1.4; padding: 15px;")
-    
-    content_layout.addWidget(text_label)
-    scroll_area.setWidget(content_widget)
-    layout.addWidget(scroll_area)
-    
-    # Nút đóng
+    dialog.setWindowTitle("📚 Hướng dẫn sử dụng add-on")
+    dialog.resize(760, 640)
+    layout = QVBoxLayout(dialog)
+
+    tabs = QTabWidget()
+    for title, html in GUIDE_SECTIONS:
+        browser = QTextBrowser()
+        browser.setOpenExternalLinks(True)   # bấm link mở trình duyệt; bôi đen hoặc chuột phải để copy
+        browser.setHtml(html)
+        tabs.addTab(browser, title)
+    layout.addWidget(tabs)
+
     close_btn = QPushButton("Đóng")
     close_btn.clicked.connect(dialog.close)
     layout.addWidget(close_btn)
-    
-    dialog.setLayout(layout)
     dialog.exec()
+
 # ========== SETTINGS DIALOG (CẬP NHẬT) ==========
+# ========== KEY DÙNG TRONG THẺ (BACK TEMPLATE) ==========
+# Thẻ không ghi cứng key nữa: add-on ghi key ra file media này, back template đọc từ đó.
+# File media tự Sync lên AnkiWeb rồi xuống điện thoại, nên AnkiMobile/AnkiDroid (không chạy add-on) vẫn dùng được.
+CARD_KEYS_MEDIA_FILE = "_avg_card_keys.js"
+CARD_TTS_DEFAULT_MODEL = "gemini-2.5-flash-preview-tts"
+
+def config_key_list(config, name, legacy=None):
+    """Danh sách key trong config (list hoặc chuỗi nhiều dòng), bỏ trùng và bỏ key đã bị che (****).
+    legacy: tên ô key kiểu cũ (1 dòng) để đọc khi ô mới còn trống."""
+    value = config.get(name)
+    keys = get_key_list(value) if isinstance(value, str) else [str(k).strip() for k in (value or []) if str(k).strip()]
+    if not keys and legacy:
+        keys = get_key_list(str(config.get(legacy) or ""))
+    return list(dict.fromkeys(k for k in keys if "*" not in k))
+
+def write_card_keys_file(config=None):
+    """Ghi key của thẻ ra file media _avg_card_keys.js (và cập nhật luôn thẻ đang mở). Trả về True nếu ghi được."""
+    if not getattr(mw, "col", None):
+        return False
+    config = config or load_config()
+    # Ô luyện câu / ô audio để trống thì dùng luôn key ở ô trên cùng (người dùng chỉ cần nhập key một lần)
+    main_keys = config_key_list(config, "api_keys", "api_key")
+    payload = {"text": config_key_list(config, "card_api_keys") or main_keys,
+               "tts": config_key_list(config, "tts_api_keys", "tts_api_key") or main_keys,
+               "tts_model": (config.get("tts_model") or CARD_TTS_DEFAULT_MODEL).strip()}
+    script = "window.AVG_CARD_KEYS = " + json.dumps(payload) + ";"
+    content = ("/* Tạo bởi add-on Auto-Generate Flashcards with Gemini từ Tools > Cài đặt Gemini.\n"
+               "   File này chứa API key của bạn: đừng gửi kèm khi chia sẻ bộ thẻ. */\n" + script + "\n")
+    path = os.path.join(mw.col.media.dir(), CARD_KEYS_MEDIA_FILE)
+    try:
+        if not (os.path.exists(path) and open(path, encoding="utf-8").read() == content):
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+    except OSError as e:
+        log_error(f"Không ghi được {CARD_KEYS_MEDIA_FILE}: {e}")
+        return False
+    web = getattr(getattr(mw, "reviewer", None), "web", None)
+    if web is not None:
+        web.eval(script)   # thẻ đang ôn dùng key mới ngay, không cần mở lại
+    return True
+
+def migrate_card_keys_and_write_file():
+    """Khi mở profile: lần đầu chạy bản mới thì chuyển key đang ghi cứng trong back template
+    (GEMINI_TTS_API_KEYS) sang khung 'API cho thẻ' và 'TTS' trong cài đặt; sau đó luôn ghi lại file key cho thẻ."""
+    try:
+        config = load_config()
+        if not config.get("card_keys_migrated"):
+            old_keys = [k for k in collect_card_template_keys() if "*" not in k]
+            if old_keys and not config_key_list(config, "card_api_keys"):
+                config["card_api_keys"] = old_keys
+            if old_keys and not config_key_list(config, "tts_api_keys", "tts_api_key"):
+                config["tts_api_keys"] = old_keys
+            config["card_keys_migrated"] = True
+            save_config(config)
+        write_card_keys_file(config)
+    except Exception as e:
+        log_error(f"Chuyển key của thẻ sang cài đặt: {e}")
+
+# ========== TỰ TẠO BỘ THẺ MẪU KHI CÀI ADD-ON ==========
+STARTER_NOTE_TYPE = "Gemini Vocabulary"     # tên loại thẻ (note type) được tạo
+STARTER_DECK = "Gemini Vocabulary"          # tên bộ thẻ (deck) được tạo
+STARTER_FLAG = "avg_starter_deck_created"   # đánh dấu trong từng bộ sưu tập: chỉ tạo một lần
+# Ô dữ liệu: Word đứng đầu (Anki dùng ô đầu để báo trùng). Gồm mọi ô trong FIELD_MAP + các ô người dùng/bài tập.
+STARTER_FIELDS = list(dict.fromkeys(
+    ["Word"] + [f for f in FIELD_MAP if f != "Image Querry"] +
+    ["Context", "Image", "Audio", "UserSentence", "Example_EN_Text",
+     "Translation_Practice", "Interpreting_Drills", "Domain_Tag", "Difficulty_Tag"]))
+STARTER_MARKER_FIELDS = {"Word", "Definition_VI", "Exercises"}   # có loại thẻ nào đủ 3 ô này là bộ thẻ đã sẵn sàng
+
+def _read_addon_text(filename):
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), filename), encoding="utf-8") as f:
+        return f.read()
+
+def ensure_starter_deck_and_note_type():
+    """Lần đầu mở bộ sưu tập sau khi cài add-on: tạo loại thẻ 'Gemini Vocabulary' (mặt trước, mặt sau, CSS lấy từ
+    front template.txt, back_template.txt, styling.txt) và bộ thẻ cùng tên. Mỗi bộ sưu tập chỉ làm một lần.
+    Nếu bộ sưu tập đã có loại thẻ dùng được (đủ các ô Word, Definition_VI, Exercises) thì không tạo thêm."""
+    try:
+        col = getattr(mw, "col", None)
+        if col is None or col.get_config(STARTER_FLAG, False):
+            return
+        models = col.models
+        already_ready = any(STARTER_MARKER_FIELDS <= set(models.field_names(m)) for m in models.all())
+        created = False
+        if not already_ready:
+            notetype = models.new(STARTER_NOTE_TYPE)
+            for name in STARTER_FIELDS:
+                models.add_field(notetype, models.new_field(name))
+            template = models.new_template("Card 1")
+            template["qfmt"] = _read_addon_text("front template.txt")
+            template["afmt"] = _read_addon_text("back_template.txt")
+            models.add_template(notetype, template)
+            notetype["css"] = _read_addon_text("styling.txt")
+            if hasattr(models, "add_dict"):
+                models.add_dict(notetype)
+            else:
+                models.add(notetype)
+            col.decks.id(STARTER_DECK)   # tạo bộ thẻ nếu chưa có
+            created = True
+        col.set_config(STARTER_FLAG, True)
+        if created:
+            mw.reset()
+            showInfo(f"✅ Add-on đã tạo sẵn bộ thẻ [{STARTER_DECK}] với loại thẻ [{STARTER_NOTE_TYPE}] "
+                     "(mặt trước, mặt sau và giao diện đẹp).\n\nBạn chỉ cần vào Tools → Gemini Editor Settings để dán API key, "
+                     "rồi thêm từ vào bộ thẻ này.")
+    except Exception as e:
+        import traceback
+        log_error(f"Tạo bộ thẻ mẫu: {e}\n{traceback.format_exc()}")
+
 class SettingsDialog(QDialog):
+    def _key_box(self, layout, label, keys, tip, min_height=120):
+        """Khung nhập nhiều key, giống hệt khung 'Google Gemini API Key' để tạo thẻ."""
+        layout.addWidget(QLabel(label))
+        box = QPlainTextEdit()
+        box.setPlainText("\n".join(keys))
+        box.setPlaceholderText("Dán danh sách Key vào đây...\nAQ.Ab8...\nAIzaSy...")
+        box.setMinimumHeight(min_height)
+        layout.addWidget(box)
+        layout.addWidget(QLabel(tip))
+        return box
+
+    @staticmethod
+    def _link_label(text, url):
+        """Dòng chữ có link: bấm để mở trình duyệt, hoặc bôi đen / chuột phải để copy."""
+        label = QLabel(f'{text} <a href="{url}">{url}</a>')
+        label.setTextFormat(Qt.TextFormat.RichText)
+        label.setOpenExternalLinks(True)
+        label.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction
+                                      | Qt.TextInteractionFlag.TextSelectableByMouse)
+        label.setWordWrap(True)
+        return label
+
+    @staticmethod
+    def _keys_from_box(box):
+        return get_key_list(box.toPlainText().strip())
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("⚙️ Cài đặt Gemini (Hỗ trợ Nhiều Key)")
@@ -2119,10 +2230,27 @@ class SettingsDialog(QDialog):
         content_layout.addWidget(QLabel("💡 Nên dùng: gemini-3.8-flash (mới nhất). Khi model này lỗi/hết lượt, add-on tự thử: "
                                         + ", ".join(GEMINI_FALLBACK_MODELS[1:])))
         
+        content_layout.addWidget(self._link_label("🔗 Lấy API key Gemini miễn phí tại:", "https://aistudio.google.com/api-keys"))
+
         content_layout.addWidget(QLabel("⏱️ Timeout (giây):"))
         current_timeout = self.config.get("timeout", 300)
         self.timeout_input = QLineEdit(str(current_timeout))
         content_layout.addWidget(self.timeout_input)
+
+        # API cho thẻ (back template): Luyện câu, Áp dụng
+        group_card = QGroupBox("🃏 API dùng cho luyện câu")
+        layout_card = QVBoxLayout()
+        self.card_api_input = self._key_box(
+            layout_card, "🔑 Google Gemini API Key cho luyện câu (Nhập nhiều key, mỗi dòng 1 key):",
+            config_key_list(self.config, "card_api_keys"),
+            "💡 Có thể để trống: add-on sẽ dùng key ở ô Google Gemini API Key phía trên (điện thoại cũng dùng được sau khi Lưu và Sync).")
+        card_note = QLabel("📱 Bấm Lưu rồi Sync: key được ghi vào file media " + CARD_KEYS_MEDIA_FILE
+                           + ", điện thoại tự nhận theo, không cần sửa thẻ.")
+        card_note.setWordWrap(True)
+        card_note.setStyleSheet("font-size: 11px; color: #555;")
+        layout_card.addWidget(card_note)
+        group_card.setLayout(layout_card)
+        content_layout.addWidget(group_card)
 
         # Groq Provider (Free alternative)
         group_groq = QGroupBox("🆓 Groq Cloud (FREE - Alternative to Gemini)")
@@ -2152,9 +2280,8 @@ class SettingsDialog(QDialog):
         self.groq_model_input.setPlaceholderText("llama-3.3-70b-versatile, mixtral-8x7b-32768, gemma2-9b-it")
         layout_groq.addWidget(self.groq_model_input)
 
-        groq_help = QLabel("GET FREE KEY: https://console.groq.com/keys\nModels: llama-3.3-70b (best), mixtral-8x7b, llama-3.1-8b")
-        groq_help.setStyleSheet("font-size: 11px; color: #FF6D00; margin-top: 5px;")
-        layout_groq.addWidget(groq_help)
+        layout_groq.addWidget(self._link_label("🔗 Lấy API key Groq miễn phí tại:", "https://console.groq.com/keys"))
+        layout_groq.addWidget(self._link_label("📋 Danh sách model của Groq:", "https://console.groq.com/docs/models"))
 
         group_groq.setLayout(layout_groq)
         content_layout.addWidget(group_groq)
@@ -2163,24 +2290,16 @@ class SettingsDialog(QDialog):
         group_tts = QGroupBox("Cấu hình Audio (Text-to-Speech)")
         layout_tts = QVBoxLayout()
         
-        layout_tts.addWidget(QLabel("🔑 TTS API Key (Để trống nếu dùng Key chung):"))
-        self.tts_api_input = QLineEdit(self.config.get("tts_api_key", ""))
-        self.tts_api_input.setEchoMode(QLineEdit.EchoMode.Password)
-        layout_tts.addWidget(self.tts_api_input)
+        self.tts_api_input = self._key_box(
+            layout_tts, "🔑 Gemini TTS API Key: nút 🔊 trên thẻ và tạo audio (Nhập nhiều key, mỗi dòng 1 key):",
+            config_key_list(self.config, "tts_api_keys", "tts_api_key"),
+            "💡 Có thể để trống: add-on sẽ dùng key ở ô Google Gemini API Key phía trên.")
 
-        layout_tts.addWidget(QLabel("🤖 TTS Model:"))
-        self.tts_model_input = QLineEdit(self.config.get("tts_model", "gemini-2.5-flash-preview-tts"))
+        layout_tts.addWidget(QLabel("🤖 TTS Model (dùng chung cho thẻ và add-on):"))
+        self.tts_model_input = QLineEdit(self.config.get("tts_model", CARD_TTS_DEFAULT_MODEL))
+        self.tts_model_input.setPlaceholderText(CARD_TTS_DEFAULT_MODEL)
         layout_tts.addWidget(self.tts_model_input)
-        
-        layout_tts.addWidget(QLabel("🗣️ Giọng đọc (Để trống để tự động phát hiện):"))
-        self.voice_input = QLineEdit(self.config.get("voice_name", ""))
-        self.voice_input.setPlaceholderText("Kore, Fenrir, Puck, Zephyr...")
-        layout_tts.addWidget(self.voice_input)
-        
-        voice_help = QLabel("• Gợi ý: Kore, Fenrir, Puck, Zephyr, Aoede, Charon")
-        voice_help.setStyleSheet("font-size: 11px; color: #666; margin-top: 5px;")
-        layout_tts.addWidget(voice_help)
-        
+
         group_tts.setLayout(layout_tts)
         content_layout.addWidget(group_tts)
 
@@ -2195,7 +2314,7 @@ class SettingsDialog(QDialog):
         layout_img.addWidget(self.auto_image_cb)
 
         # [MỚI] Khung nhập nhiều Pollinations API Key
-        layout_img.addWidget(QLabel("🔑 Pollinations API Keys (Nhập nhiều key, mỗi dòng 1 key):"))
+        layout_img.addWidget(QLabel("🔑 Pollinations API Keys - dịch vụ trả phí bằng Pollen (Nhập nhiều key, mỗi dòng 1 key):"))
         self.pollinations_key_input = QPlainTextEdit()
         # Lấy danh sách key cũ (nếu là list thì join lại, nếu str thì để nguyên)
         pol_keys = self.config.get("pollinations_api_key", "")
@@ -2207,41 +2326,20 @@ class SettingsDialog(QDialog):
         layout_img.addWidget(self.pollinations_key_input)
         
         layout_img.addWidget(QLabel("💡 Hệ thống sẽ tự động đổi key khi gặp lỗi Rate Limit (429)."))
+        layout_img.addWidget(self._link_label("🔗 Lấy key Pollinations (cần Pollen: nạp tiền hoặc làm nhiệm vụ Quests để nhận miễn phí):", "https://enter.pollinations.ai/keys"))
 
         # Dropdown chọn Engine ưu tiên
         layout_img.addWidget(QLabel("🚀 Chọn Engine tạo ảnh ưu tiên:"))
         self.image_engine_combo = QComboBox()
-        self.image_engine_combo.addItems(["auto", "pollinations", "horde", "google_search", "google", "hf"])
-        self.image_engine_combo.setCurrentText(self.config.get("image_engine_priority", "auto"))
+        self.image_engine_combo.addItems(IMAGE_ENGINES)
+        saved_engine = self.config.get("image_engine_priority", "auto")
+        self.image_engine_combo.setCurrentText(saved_engine if saved_engine in IMAGE_ENGINES else "auto")
         layout_img.addWidget(self.image_engine_combo)
         
         # Engine Description
-        self.engine_desc_label = QLabel("• Auto: Tự động (Khuyên dùng)\n• Pollinations: Nhanh, Free (Hay lỗi 502)\n• AI Horde: Free, Ổn định (Chờ ~30s)\n• Google: Cần API Key")
+        self.engine_desc_label = QLabel("• Auto: Tự động (Khuyên dùng): có key Pollinations thì dùng trước, không có thì dùng AI Horde\n• Pollinations: Ảnh đẹp, cần key và Pollen (làm nhiệm vụ Quests để nhận miễn phí)\n• AI Horde: Miễn phí, không cần tài khoản (chờ ~30-90s)")
         self.engine_desc_label.setStyleSheet("font-size: 11px; color: #555; margin-left: 10px; margin-bottom: 10px;")
         layout_img.addWidget(self.engine_desc_label)
-
-        # Cấu hình Google Search (CSE)
-        layout_img.addWidget(QLabel("🔍 Google CSE API Key (Nếu dùng Google Search):"))
-        self.cse_key_input = QLineEdit(self.config.get("google_cse_key", ""))
-        self.cse_key_input.setEchoMode(QLineEdit.EchoMode.Password)
-        layout_img.addWidget(self.cse_key_input)
-        
-        layout_img.addWidget(QLabel("🔍 Google CSE ID (CX) (Nếu dùng Google Search):"))
-        self.cse_cx_input = QLineEdit(self.config.get("google_cse_cx", ""))
-        layout_img.addWidget(self.cse_cx_input)
-
-        # Cấu hình Google Imagen
-        layout_img.addWidget(QLabel("🎨 Google Imagen Model (Nếu dùng Engine Google):"))
-        self.image_model_input = QLineEdit(self.config.get("image_model", "imagen-3.0-generate-001"))
-        self.image_model_input.setPlaceholderText("imagen-3.0-generate-001")
-        layout_img.addWidget(self.image_model_input)
-
-        # Hugging Face Token (Optional)
-        layout_img.addWidget(QLabel("🔑 Hugging Face Token (Nếu dùng Engine HF):"))
-        self.hf_token_input = QLineEdit(self.config.get("hf_token", ""))
-        self.hf_token_input.setEchoMode(QLineEdit.EchoMode.Password)
-        self.hf_token_input.setPlaceholderText("hf_...")
-        layout_img.addWidget(self.hf_token_input)
 
         group_img.setLayout(layout_img)
         content_layout.addWidget(group_img)  # Sửa: content_layout thay vì layout
@@ -2284,9 +2382,15 @@ class SettingsDialog(QDialog):
         # Xóa api_key cũ để tránh xung đột
         self.config.pop("api_key", None)
         self.config["model"] = self.model_input.text().strip()
-        self.config["tts_api_key"] = self.tts_api_input.text().strip()
-        self.config["tts_model"] = self.tts_model_input.text().strip()
-        self.config["voice_name"] = self.voice_input.text().strip()
+        self.config["card_api_keys"] = self._keys_from_box(self.card_api_input)
+        self.config["tts_api_keys"] = self._keys_from_box(self.tts_api_input)
+        # Không xoá ô kiểu cũ tts_api_key / image_api_key: chỉ đọc khi khung mới trống, key có "*" bị bỏ qua
+        self.config["tts_model"] = self.tts_model_input.text().strip() or CARD_TTS_DEFAULT_MODEL
+        self.config["voice_name"] = ""   # đã bỏ ô chọn giọng: luôn tự động theo ngôn ngữ
+        # Dọn các cài đặt của tính năng đã bỏ (Hugging Face, Google Search, Imagen) khỏi file cấu hình
+        for old_key in ("hf_token", "google_cse_key", "google_cse_cx",
+                        "image_api_key", "image_api_keys", "image_model"):
+            self.config.pop(old_key, None)
         self.config["text_provider"] = self.text_provider_combo.currentText()
         raw_groq_keys = self.groq_key_input.toPlainText().strip()
         if raw_groq_keys:
@@ -2298,10 +2402,6 @@ class SettingsDialog(QDialog):
         # Luu cau hinh anh moi
         self.config["auto_image_gen"] = self.auto_image_cb.isChecked()
         self.config["image_engine_priority"] = self.image_engine_combo.currentText()
-        self.config["image_model"] = self.image_model_input.text().strip()
-        self.config["hf_token"] = self.hf_token_input.text().strip()
-        self.config["google_cse_key"] = self.cse_key_input.text().strip()
-        self.config["google_cse_cx"] = self.cse_cx_input.text().strip()
         # [FIX] Lưu Pollinations Keys
         raw_pol_keys = self.pollinations_key_input.toPlainText().strip()
         self.config["pollinations_api_key"] = raw_pol_keys
@@ -2318,7 +2418,11 @@ class SettingsDialog(QDialog):
             self.config["timeout"] = 300
             
         save_config(self.config)
-        showInfo("✅ Đã lưu cài đặt.")
+        if write_card_keys_file(self.config):
+            showInfo("✅ Đã lưu cài đặt.\n\n📱 Key cho thẻ và TTS đã được ghi vào " + CARD_KEYS_MEDIA_FILE
+                     + ". Bấm Sync để điện thoại cũng dùng được.")
+        else:
+            showInfo("✅ Đã lưu cài đặt (chưa ghi được file key cho thẻ, thử mở lại Anki).")
         self.close()
 
 def show_settings_dialog(): 
@@ -2474,8 +2578,11 @@ def estimate_tokens(text):
 def get_token_reset_time():
     """Lấy thời gian reset token tiếp theo"""
     usage = load_token_usage()
-    today_str = usage.get("today", datetime.now().strftime("%Y-%m-%d"))
-    
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    if usage.get("today") != today_str:
+        # Số liệu của ngày cũ (chưa có request nào hôm nay): hiện 0 thay vì số của hôm đó
+        usage = {"today": today_str, "total_tokens": 0, "total_requests": 0}
+
     try:
         from datetime import timedelta
         today = datetime.strptime(today_str, "%Y-%m-%d")
@@ -2502,8 +2609,15 @@ class TokenUsageDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("📊 Token Usage Statistics")
         self.setMinimumWidth(400)
-        
-        layout = QVBoxLayout()
+
+        # Nội dung nằm trong vùng cuộn (màn hình laptop thấp vẫn xem hết), 2 nút dưới cùng luôn hiện
+        outer_layout = QVBoxLayout(self)
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)   # chỉ cuộn dọc, chữ tự xuống dòng
+        content = QWidget()
+        layout = QVBoxLayout(content)
         
         # Title
         title_label = QLabel("📊 Thống kê sử dụng Gemini API")
@@ -2516,20 +2630,26 @@ class TokenUsageDialog(QDialog):
         key_layout = QVBoxLayout()
         
         config = load_config()
-        api_keys = config.get("api_keys", [])
-        current_index = config.get("current_key_index", 0)
-        
+        all_keys = [k for k in get_key_list("\n".join(config.get("api_keys") or [])) if "YOUR_API_KEY" not in k]
+        api_keys = [k for k in all_keys if "*" not in k]   # key bị che (****) không gọi được Google
+        masked_keys = [k for k in all_keys if "*" in k]
+
         if api_keys:
+            current_index = _gemini_key_start % len(api_keys)   # key mà lần gọi tới sẽ thử trước
             key_status = f"📊 Đang sử dụng: Key {current_index + 1}/{len(api_keys)}"
-            key_status += f"\n🔑 Tổng số key: {len(api_keys)}"
-            
+            key_status += f"\n🔑 Key dùng được: {len(api_keys)}/{len(all_keys)}"
+
             # Hiển thị key hiện tại (ẩn phần giữa)
-            if api_keys:
-                current_key = api_keys[current_index]
-                masked_key = current_key[:10] + "..." + current_key[-10:] if len(current_key) > 20 else current_key
-                key_status += f"\n\n🔐 Key hiện tại: {masked_key}"
+            current_key = api_keys[current_index]
+            key_status += f"\n\n🔐 Key hiện tại: {current_key[:6]}****{current_key[-4:]}"
+        elif all_keys:
+            key_status = f"❌ Cả {len(all_keys)} key đều là bản bị che, không có key thật nào để dùng"
         else:
             key_status = "❌ Chưa cấu hình API Key"
+        if masked_keys:
+            key_status += (f"\n\n⚠️ {len(masked_keys)} key bị che (****) nên Google từ chối: {', '.join(masked_keys)}"
+                           "\nVào Gemini Editor Settings, xoá các dòng này và dán lại key đầy đủ "
+                           "(copy từ aistudio.google.com/apikey).")
         
         key_label = QLabel(key_status)
         key_label.setWordWrap(True)
@@ -2567,7 +2687,13 @@ class TokenUsageDialog(QDialog):
                 avg_label = QLabel(f"📊 Trung bình mỗi request: <b>{avg_tokens:,}</b> token")
                 avg_label.setStyleSheet("font-size: 14px; margin: 5px;")
                 usage_layout.addWidget(avg_label)
-            
+
+            # Bộ đếm mới đếm mọi lượt gọi thành công (tạo thẻ, thêm nhanh, thêm chi tiết...), theo ngày của Google
+            calls_today = sum(load_gemini_usage()["used"].values())
+            calls_label = QLabel(f"✅ Lượt gọi Gemini thành công (ngày của Google): <b>{calls_today}</b>")
+            calls_label.setStyleSheet("font-size: 14px; margin: 5px;")
+            usage_layout.addWidget(calls_label)
+
             usage_group.setLayout(usage_layout)
             layout.addWidget(usage_group)
             
@@ -2584,7 +2710,12 @@ class TokenUsageDialog(QDialog):
             time_left_label = QLabel(f"⏱️ Thời gian còn lại: <b>{token_info['time_left']}</b>")
             time_left_label.setStyleSheet("font-size: 14px; margin: 5px; color: #e74c3c;")
             reset_layout.addWidget(time_left_label)
-            
+
+            _, google_reset = gemini_quota_day_and_reset()
+            google_reset_label = QLabel(f"🌎 Google cấp lại lượt miễn phí lúc: <b>{google_reset}</b> (giờ VN)")
+            google_reset_label.setStyleSheet("font-size: 14px; margin: 5px;")
+            reset_layout.addWidget(google_reset_label)
+
             reset_group.setLayout(reset_layout)
             layout.addWidget(reset_group)
             
@@ -2593,7 +2724,8 @@ class TokenUsageDialog(QDialog):
             note_layout = QVBoxLayout()
             
             note_text = QLabel(
-                "• Token sẽ được reset vào 00:00:00 mỗi ngày<br>"
+                "• Số token ước tính reset vào 00:00:00 mỗi ngày (giờ máy)<br>"
+                "• Lượt miễn phí của Google reset lúc 0:00 giờ Pacific, tức 14:00 hoặc 15:00 giờ VN<br>"
                 "• 1 token ≈ 4 ký tự tiếng Anh<br>"
                 "• 1 token ≈ 2 ký tự tiếng Việt/tiếng Hoa<br>"
                 "• Đây là ước tính, số liệu thực tế có thể khác"
@@ -2620,10 +2752,17 @@ class TokenUsageDialog(QDialog):
         
         button_layout.addWidget(refresh_btn)
         button_layout.addWidget(close_btn)
-        layout.addLayout(button_layout)
-        
-        self.setLayout(layout)
-    
+
+        for label in content.findChildren(QLabel):
+            label.setWordWrap(True)
+        scroll_area.setWidget(content)
+        outer_layout.addWidget(scroll_area)
+        outer_layout.addLayout(button_layout)
+        from aqt.qt import QApplication
+        screen = self.screen() or QApplication.primaryScreen()
+        max_height = int(screen.availableGeometry().height() * 0.85) if screen else 700
+        self.resize(480, min(content.sizeHint().height() + 70, max_height))
+
     def manual_rotate_key(self):
         """Xoay key thủ công"""
         config = load_config()
@@ -2636,20 +2775,20 @@ class TokenUsageDialog(QDialog):
         
         # Gọi hàm từ gemini_features để test key
         # Hàm này sẽ tự động thử lần lượt các key trong danh sách
-        success, _ = call_gemini_with_key_rotation(
-            fake_url, 
-            {"Content-Type": "application/json"}, 
-            fake_payload, 
-            config, 
+        success, detail = call_gemini_with_key_rotation(
+            fake_url,
+            {"Content-Type": "application/json"},
+            fake_payload,
+            config,
             timeout=10
         )
-        
-        if success: 
+
+        if success:
              showInfo("✅ Kết nối thành công! Hệ thống đã tìm được Key hoạt động tốt.")
              self.close()
              show_token_usage_dialog()  # Mở lại bảng để cập nhật trạng thái
         else:
-             showInfo("❌ Tất cả các Key đều không hoạt động. Vui lòng kiểm tra lại mạng hoặc danh sách Key.")
+             showInfo("❌ Không có key nào hoạt động.\n\nChi tiết: " + str(detail)[:800])
     
     def refresh(self):
         self.close()
@@ -2716,7 +2855,7 @@ def setup_menu():
     update_drill_template_action.triggered.connect(add_drill_buttons_to_template)
     mw.form.menuTools.addAction(update_drill_template_action)
 
-    context_guide_action = QAction("📚 Hướng dẫn sử dụng Context", mw)
+    context_guide_action = QAction("📚 Hướng dẫn sử dụng add-on", mw)
     context_guide_action.triggered.connect(show_context_usage_guide)
     mw.form.menuTools.addAction(context_guide_action)
     
@@ -3237,6 +3376,10 @@ def run_batch_add(words_text: str, deck_name: str):
     missing_fields_check = [f for f in required_fields_check if f not in model_fields]
     if missing_fields_check:
         showCritical("Kiểu thẻ (Note Type) của bạn đang thiếu các trường cần thiết:\n\n" + "\n".join(missing_fields_check))
+        return
+
+    words = drop_existing_words(words)   # bỏ từ đã có trong bộ thẻ trước khi gọi API
+    if not words:
         return
 
     did = mw.col.decks.id(deck_name)
@@ -5483,8 +5626,15 @@ def show_gemini_key_health_dialog():
     """Tools → 🩺 Kiểm tra API key: trạng thái từng key (cài đặt add-on + trong thẻ) và lượt còn lại."""
     config = load_config()
     addon_keys = get_key_list("\n".join(config.get("api_keys") or []))
-    card_keys = [k for k in collect_card_template_keys() if k not in addon_keys]
-    targets = [("Cài đặt add-on", k) for k in addon_keys] + [("Trong thẻ", k) for k in card_keys]
+    targets, seen = [], set()
+    for src, keys in (("Cài đặt add-on", addon_keys),
+                      ("Key cho thẻ", config_key_list(config, "card_api_keys")),
+                      ("Key TTS", config_key_list(config, "tts_api_keys", "tts_api_key")),
+                      ("Trong thẻ (kiểu cũ)", [k for k in collect_card_template_keys() if "*" not in k])):
+        for k in keys:
+            if k not in seen:
+                seen.add(k)
+                targets.append((src, k))
     if not targets:
         showInfo("Chưa có API key nào (Tools → Gemini Editor Settings).")
         return
@@ -5515,7 +5665,7 @@ def show_gemini_key_health_dialog():
             kid = _gemini_kid(key)
             used = ", ".join(f"{m.replace('gemini-', '')}: {n}" for slot, n in usage["used"].items()
                              for m in [slot.split("|", 1)[1]] if slot.startswith(kid + "|")) or "-"
-            for col, text in enumerate([src, "…" + key[-4:], label, used if src == "Cài đặt add-on" else "(thẻ tự dùng, add-on không đếm)"]):
+            for col, text in enumerate([src, "…" + key[-4:], label, used if src not in ("Key cho thẻ", "Trong thẻ (kiểu cũ)") else "(thẻ tự dùng, add-on không đếm)"]):
                 table.setItem(row, col, QTableWidgetItem(text))
         layout.addWidget(table)
         dead = sum(1 for _, _, (state, _) in rows if state == "dead")
@@ -5551,7 +5701,11 @@ def run_optimized_batch_add(items, deck_name, batch_size=10, delay=2,
     if missing_fields_check:
         showCritical("Kiểu thẻ (Note Type) của bạn đang thiếu các trường cần thiết:\n\n" + "\n".join(missing_fields_check))
         return
-    
+
+    items = drop_existing_words(items, get_word=lambda it: it["word"])   # bỏ từ đã có trước khi gọi API
+    if not items:
+        return
+
     try:
         progress_dialog = OptimizedBatchProgressDialog(parent=mw, total_words=len(items))
     except NameError:
@@ -6122,8 +6276,8 @@ def pcm_to_wav(pcm_data, sample_rate=24000):
         return wav_file.getvalue()
 
 def get_gemini_speech(text, config):
-    # 1. Ưu tiên sử dụng TTS API Key riêng, nếu không có thì dùng Key chung
-    api_key_str = str(config.get("tts_api_key") or "").strip()
+    # 1. Ưu tiên khung "Gemini TTS API Key" (nhiều key, xoay vòng), nếu trống thì dùng Key chung
+    api_key_str = "\n".join(config_key_list(config, "tts_api_keys", "tts_api_key"))
     if not api_key_str:
         api_key_str = str(config.get("api_key") or "").strip()
     # Fallback: dùng TOÀN BỘ danh sách api_keys để xoay vòng (trước đây chỉ lấy key đầu tiên)
@@ -6419,16 +6573,7 @@ def run_standalone_image_gen(editor):
             image_query_prompt = re.sub(r'<[^>]+>', '', image_query_prompt)
             break
             
-    # 3. Kiểm tra API Key
-    # Ưu tiên Image API Key, nếu không có thì dùng Key chung, nếu cả 2 không có thì báo lỗi
-    api_key = config.get("image_api_key") or config.get("api_key")
-    # Fallback to api_keys list
-    if not api_key and "api_keys" in config and isinstance(config["api_keys"], list) and config["api_keys"]:
-        api_key = config["api_keys"][0]
-    
-    if not api_key or "YOUR_API_KEY_HERE" in api_key:
-        showCritical("⚠️ Vui lòng cài đặt API Key trong menu Settings trước.")
-        return
+    # Các engine ảnh còn lại (Pollinations, AI Horde) không cần key Gemini nên không kiểm tra key ở đây.
 
     # Hiển thị thông báo đang xử lý
     tooltip(f"🎨 Đang vẽ minh họa cho: '{keyword}'...")
@@ -6636,8 +6781,12 @@ def call_gemini_with_key_rotation(url_template, headers, payload, config, timeou
     elif config.get("api_key") and str(config["api_key"]).strip():
         key_string = str(config["api_key"])
 
-    keys = [k for k in get_key_list(key_string) if "YOUR_API_KEY" not in k]
+    all_keys = [k for k in get_key_list(key_string) if "YOUR_API_KEY" not in k]
+    keys = [k for k in all_keys if "*" not in k]   # key bị che (****) chắc chắn bị Google từ chối
     if not keys:
+        if all_keys:
+            return (False, f"Cả {len(all_keys)} key trong khung tạo thẻ đều là bản bị che (có ****), không phải key thật. "
+                           "Vào Tools > Gemini Editor Settings, dán lại key đầy đủ (copy từ aistudio.google.com/apikey).")
         return (False, "Chưa cấu hình API Key hợp lệ. Vào Tools → Gemini Editor Settings để nhập key.")
 
     models = _gemini_models_for(url_template, payload)
@@ -6771,162 +6920,59 @@ def make_request_with_rotation(url_template, payload, key_string, timeout=300):
 # ========== CẬP NHẬT LẠI HÀM TẠO ẢNH (HỖ TRỢ GEMINI 2.0 FLASH) ==========
 # Thay thế hàm generate_image_from_gemini cũ bằng hàm này
 
-def generate_image_google_search(prompt: str, config: dict):
-    """
-    Tìm ảnh trên Google Images (Custom Search Engine).
-    Trả về: (bytes_data, error_message)
-    """
-    import requests
-    import random
-    
-    api_key = config.get("google_cse_key", "")
-    cx = config.get("google_cse_cx", "")
-    
-    if not api_key or not cx:
-        return (None, "Thiếu Google CSE Key hoặc CX ID trong Cài đặt.")
-        
-    url = "https://www.googleapis.com/customsearch/v1"
-    params = {
-        "key": api_key,
-        "cx": cx,
-        "q": prompt,
-        "searchType": "image",
-        "num": 3,
-        "safe": "active",
-        "imgSize": "large",
-        "imgType": "photo"
-    }
-    
-    print(f"🔍 [Google Search] Searching: '{prompt}'...")
-    
-    try:
-        response = requests.get(url, params=params, timeout=30)
-        if response.status_code == 200:
-            data = response.json()
-            items = data.get("items", [])
-            if items:
-                item = random.choice(items)
-                link = item.get("link")
-                print(f"✅ [Google Search] Found: {link}")
-                
-                try:
-                    img_resp = requests.get(link, timeout=30)
-                    if img_resp.status_code == 200:
-                        return (img_resp.content, None)
-                    else:
-                        return (None, f"Lỗi tải ảnh gốc ({img_resp.status_code})")
-                except Exception as e:
-                    return (None, f"Lỗi kết nối tải ảnh: {e}")
-            else:
-                return (None, "Google Search trả về 0 kết quả.")
-        else:
-            return (None, f"Lỗi Google API ({response.status_code}): {response.text[:100]}")
-    except Exception as e:
-        return (None, f"Lỗi kết nối Google Search: {e}")
-        
-    return (None, "Lỗi không xác định.")
+# Pollinations tính tiền bằng "Pollen": phải có key sk_ và còn Pollen (nạp tiền, hoặc làm nhiệm vụ / Quests
+# trên enter.pollinations.ai để nhận Pollen miễn phí). Không key thì chỉ ra được vài ảnh rồi bị lỗi 402 nên không dùng.
+# 'flux' là tên gọi tắt của model dưới đây; 'flux-realism' và 'turbo' đã bị Pollinations xoá (lỗi 400).
+POLLINATIONS_GEN_URL = "https://gen.pollinations.ai/image/"
+POLLINATIONS_MODEL = "black-forest-labs/flux.1-schnell"
+POLLINATIONS_HTTP_HINTS = {
+    401: "key không đúng",
+    402: "hết Pollen (vào enter.pollinations.ai làm nhiệm vụ Quests để nhận thêm, hoặc nạp tiền)",
+    403: "key không có quyền dùng model này",
+    429: "gọi quá nhanh, thử lại sau",
+}
+
+def pollinations_keys(config):
+    """Danh sách key Pollinations dùng được. Key bị che (có ****) chắc chắn bị từ chối nên bỏ qua."""
+    key_input = config.get("pollinations_api_key", "")
+    raw_keys = [str(k) for k in key_input] if isinstance(key_input, list) else re.split(r"[\n,]+", str(key_input))
+    return [k.strip() for k in raw_keys if k.strip() and "*" not in k]
 
 def generate_image_pollinations(prompt: str, config: dict):
     """
-    Tạo ảnh qua Pollinations.ai (Hệ thống mới - Unified API).
-    CẬP NHẬT FIX LỖI: Chặn AI vẽ chữ (text) vào hình.
+    Tạo ảnh qua gen.pollinations.ai (model flux). Cần key sk_ còn Pollen.
+    Key hết Pollen / sai thì thử key kế tiếp. Trả về (bytes ảnh, None) hoặc (None, lỗi).
     """
     import requests
     import random
     import urllib.parse
-    import time
-    
-    # 1. Lấy danh sách Key
-    key_input = config.get("pollinations_api_key", "")
-    keys = []
-    if isinstance(key_input, list):
-        keys = [k.strip() for k in key_input if k.strip()]
-    else:
-        raw_str = str(key_input)
-        if '\n' in raw_str:
-             keys = [k.strip() for k in raw_str.split('\n') if k.strip()]
-        else:
-             keys = [k.strip() for k in raw_str.split(',') if k.strip()]
-    if not keys: keys = [""]
 
-    user_agents = [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    ]
+    keys = pollinations_keys(config)
+    if not keys:
+        return (None, "chưa có key Pollinations (Pollinations là dịch vụ trả phí bằng Pollen)")
 
-    # Model Flux (Mạnh nhất)
-    models_to_try = ["flux", "flux-realism", "turbo"]
-    
-    # --- [CẢI TIẾN] XỬ LÝ PROMPT CHÍNH XÁC HƠN ---
-    # Gửi prompt gốc trực tiếp, không thêm prefix gây méo nghĩa
-    # Chỉ thêm style boosters nhẹ để AI vẽ đẹp hơn
-    clean_prompt = prompt.strip()
-    # Thêm negative tags ngay trong prompt để AI hiểu
-    enhanced_prompt = f"{clean_prompt}, no text, no letters, no writing, no watermark, no logo"
-    
-    safe_prompt = urllib.parse.quote(enhanced_prompt)
-    
-    # Tạo Negative prompt (Những thứ cấm xuất hiện: chữ, logo, watermark)
-    negative = "text, watermark, writing, letters, typography, logo, signature, ugly, deformed"
-    safe_negative = urllib.parse.quote(negative)
+    # Thêm chữ cấm vẽ chữ/logo ngay trong prompt
+    safe_prompt = urllib.parse.quote(f"{prompt.strip()}, no text, no letters, no writing, no watermark, no logo")
+    headers_base = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"}
+    errors = []
 
-    last_error = "Unknown"
-    key_index = 0
-    
-    for model in models_to_try:
-        attempts_for_model = 0
-        max_attempts_per_model = max(1, len(keys)) 
-        
-        while attempts_for_model < max_attempts_per_model:
-            current_api_key = keys[key_index]
-            seed = random.randint(1, 999999999)
-            
-            # --- URL ĐÃ CẬP NHẬT ---
-            # 1. nologo=true: Bỏ logo Pollinations
-            # 2. enhance=false: TẮT tự động enhance của hệ thống (vì nó hay tự thêm chữ vào)
-            # 3. negative_prompt: Cấm chữ viết
-            base_url = (f"https://image.pollinations.ai/prompt/{safe_prompt}?"
-                        f"width=1024&height=1024&nologo=true&seed={seed}&enhance=false"
-                        f"&negative_prompt={safe_negative}")
-            
-            if model:
-                url = f"{base_url}&model={model}"
-            else:
-                url = base_url
-            
-            # Log kiểm tra
-            print(f"🌍 [Pollinations Fix] Vẽ: '{clean_prompt}' | Model: {model} | No-Text Mode")
-            
-            try:
-                headers = {"User-Agent": random.choice(user_agents)}
-                if current_api_key:
-                    headers["Authorization"] = f"Bearer {current_api_key}"
-                
-                response = requests.get(url, headers=headers, timeout=60)
-                
-                if response.status_code == 200:
-                    content_type = response.headers.get("Content-Type", "")
-                    if "image" in content_type and len(response.content) > 1000:
-                        return (response.content, None)
-                    else:
-                        last_error = f"Response rác ({content_type})"
-                        break 
-                elif response.status_code == 429:
-                    print(f"   ⚠️ Rate Limit. Đổi key...")
-                    key_index = (key_index + 1) % len(keys)
-                    attempts_for_model += 1
-                    time.sleep(2)
-                    continue
-                else:
-                    last_error = f"HTTP {response.status_code}"
-                    print(f"   ⚠️ Lỗi {response.status_code}. Thử model khác...")
-                    break 
-            except Exception as e:
-                last_error = f"Conn Err: {str(e)}"
-                break
-                
-        time.sleep(1)
-            
-    return (None, f"Pollinations Error: {last_error}")
+    for i, key in enumerate(keys, 1):
+        seed = random.randint(1, 999999999)
+        url = f"{POLLINATIONS_GEN_URL}{safe_prompt}?width=1024&height=1024&seed={seed}&model={POLLINATIONS_MODEL}"
+        print(f"🌍 [Pollinations] key {i}/{len(keys)} · flux")
+        try:
+            response = requests.get(url, headers=dict(headers_base, Authorization=f"Bearer {key}"), timeout=60)
+        except Exception as e:
+            errors.append(f"key {i}: lỗi kết nối ({e})")
+            continue
+        ctype = response.headers.get("Content-Type", "")
+        if response.status_code == 200 and "image" in ctype and len(response.content) > 1000:
+            return (response.content, None)
+        why = POLLINATIONS_HTTP_HINTS.get(response.status_code) or (
+            f"HTTP {response.status_code}" if response.status_code != 200 else f"phản hồi không phải ảnh ({ctype})")
+        errors.append(f"key {i}: {why}")
+        print(f"   ⚠️ {why} -> thử key tiếp")
+    return (None, "Pollinations: " + " | ".join(errors))
 
 def generate_image_ai_horde(prompt: str):
     """
@@ -7018,71 +7064,13 @@ def generate_image_ai_horde(prompt: str):
     except Exception as e:
         return (None, f"AI Horde Exception: {e}")
 
-def generate_image_google(prompt: str, config: dict):
-    """
-    Tạo ảnh bằng Google Imagen 3 (thông qua Gemini API).
-    Trả về: (bytes_data, error_message)
-    """
-    import requests
-    import base64
-    
-    api_key = config.get("image_api_key") or config.get("api_key")
-    if not api_key and "api_keys" in config and isinstance(config["api_keys"], list) and config["api_keys"]:
-        api_key = config["api_keys"][0]
-    if not api_key:
-        return (None, "Thiếu Gemini API Key trong Cài đặt.")
-        
-    # Xử lý trường hợp nhiều key
-    if isinstance(api_key, list): api_key = api_key[0]
-    if "\n" in api_key: api_key = api_key.split("\n")[0]
-        
-    # FIX: Đảm bảo model là Imagen, không phải Gemini Flash (Vốn không vẽ được)
-    model = config.get("image_model", "imagen-3.0-generate-001")
-    if "gemini" in model.lower() or not model.startswith("imagen"):
-        model = "imagen-3.0-generate-001"
-        
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:predict?key={api_key}"
-    
-    headers = {"Content-Type": "application/json"}
-    
-    payload = {
-        "instances": [{"prompt": prompt}],
-        "parameters": {"sampleCount": 1, "aspectRatio": "1:1"}
-    }
-    
-    print(f"🚀 [Google Imagen] Requesting model: {model}...")
-    
-    try:
-        response = requests.post(url, headers=headers, json=payload, timeout=60)
-        
-        if response.status_code == 200:
-            result = response.json()
-            if "predictions" in result and result["predictions"]:
-                b64_data = result["predictions"][0]["bytesBase64Encoded"]
-                print("✅ [Google Imagen] Tạo ảnh thành công!")
-                return (base64.b64decode(b64_data), None)
-            else:
-                return (None, f"Google API trả về không có ảnh: {result}")
-        else:
-            err_msg = response.text[:200]
-            if response.status_code == 403:
-                return (None, "API Key không có quyền truy cập Imagen 3 (Cần tài khoản trả phí hoặc Whitelist).")
-            if response.status_code == 404:
-                return (None, f"Model '{model}' không tồn tại hoặc sai Endpoint.")
-            return (None, f"Lỗi Google API ({response.status_code}): {err_msg}")
-            
-    except Exception as e:
-        return (None, f"Lỗi kết nối Google Imagen: {e}")
-        
-    return (None, "Lỗi không xác định.")
-
 ## ==========================================
 # CẤU HÌNH LOCAL IMAGE GENERATION (SUBPROCESS)
 # ==========================================
 def generate_image_from_gemini(keyword: str, config: dict, definition_en=None, context=None, pos_type=None):
     """
     Hàm Router thông minh tối ưu cho người dùng Free.
-    Ưu tiên: Pollinations (Flux) -> AI Horde (Free) -> HF (Free/Token) -> Google (Paid).
+    Ưu tiên: Pollinations (Flux) -> AI Horde (Free).
     
     CẢI TIẾN: Trích xuất definition_vi từ context để làm prompt chính xác hơn.
     """
@@ -7112,20 +7100,20 @@ def generate_image_from_gemini(keyword: str, config: dict, definition_en=None, c
             pos_type=pos_type
         )
     
-    # 2. Prompt tìm kiếm (dùng cho Google Search nếu cần)
-    search_prompt = f"{keyword} {clean_context if clean_context else ''} visual illustration"
-
     priority = config.get("image_engine_priority", "auto")
+    if priority not in IMAGE_ENGINES:   # config cũ còn "hf" / "google_search"
+        priority = "auto"
     error_logs = []
 
-    # --- ROUTE 1: POLLINATIONS (FLUX) - MIỄN PHÍ & ĐẸP NHẤT ---
-    if priority in ["auto", "pollinations"]:
-        print(f"🚀 [Router] Đang tạo ảnh Flux (Free) cho: {keyword}")
-        img_data, err = generate_image_pollinations(gen_prompt, config) 
+    # --- ROUTE 1: POLLINATIONS (FLUX) - TRẢ PHÍ BẰNG POLLEN, ẢNH ĐẸP ---
+    # Auto: chỉ thử khi có key (không key thì bỏ qua, đi thẳng sang AI Horde cho đỡ mất thời gian)
+    if priority == "pollinations" or (priority == "auto" and pollinations_keys(config)):
+        print(f"🚀 [Router] Đang tạo ảnh Flux (Pollinations) cho: {keyword}")
+        img_data, err = generate_image_pollinations(gen_prompt, config)
         if img_data: return (True, img_data)
-        error_logs.append(f"Pollinations: {err}")
+        error_logs.append(str(err))
 
-    # --- ROUTE 2: AI HORDE (GPU CỘNG ĐỒNG) - MIỄN PHÍ 100% ---
+    # --- ROUTE 2: AI HORDE (GPU CỘNG ĐỒNG) - MIỄN PHÍ, KHÔNG CẦN TÀI KHOẢN ---
     if priority in ["auto", "horde"]:
         print("🚀 [Router] Đang thử AI Horde (Free Community GPU)...")
         if 'generate_image_ai_horde' in globals():
@@ -7133,36 +7121,8 @@ def generate_image_from_gemini(keyword: str, config: dict, definition_en=None, c
             if img_data: return (True, img_data)
             error_logs.append(f"AI Horde: {err}")
 
-    # --- ROUTE 3: HUGGING FACE (SỬA LỖI TOKEN) ---
-    if priority in ["auto", "hf"]:
-        print("🚀 [Router] Đang thử Hugging Face Inference...")
-        # Sử dụng hàm generate_image_huggingface có sẵn ở đầu file main.py
-        if 'generate_image_huggingface' in globals():
-            img_data = generate_image_huggingface(gen_prompt, config)
-            if img_data: return (True, img_data)
-            error_logs.append("Hugging Face: Chưa có token, token hết hạn hoặc model bận")
-
-    # --- ROUTE 4: GOOGLE SEARCH (NẾU CÓ KEY) ---
-    if (priority == "google_search") or (priority == "auto" and config.get("google_cse_key")):
-        if 'generate_image_google_search' in globals():
-            img_data, err = generate_image_google_search(search_prompt, config)
-            if img_data: return (True, img_data)
-            error_logs.append(f"Google Search: {err}")
-
-    # --- ROUTE 5: GOOGLE IMAGEN (CHỈ CHẠY NẾU CÓ KEY THANH TOÁN) ---
-    if priority == "google":
-        # Kiểm tra xem có Key Imagen riêng không
-        if config.get("image_api_key") or config.get("api_key") or config.get("api_keys"):
-            print("🚀 [Router] Đang thử Google Imagen (Paid)...")
-            if 'generate_image_google' in globals():
-                img_data, err = generate_image_google(gen_prompt, config)
-                if img_data: return (True, img_data)
-                error_logs.append(f"Google Imagen: {err}")
-        else:
-            error_logs.append("Google Imagen: Require Paid API Key")
-
     final_error = " | ".join(error_logs)
-    return (False, f"❌ Không thể tạo ảnh từ các nguồn miễn phí: {final_error}")
+    return (False, f"❌ Không thể tạo ảnh: {final_error}")
 
 # ==============================================================================
 # [NEW MODULE] SPECIALIZED TRANSLATION & INTERPRETING PRACTICE
@@ -7987,5 +7947,8 @@ gui_hooks.webview_did_receive_js_message.append(handle_webview_message)
 
 # Hook cho menu Tools
 gui_hooks.main_window_did_init.append(setup_menu)
+# Mở profile: chuyển key đang ghi cứng trong thẻ sang cài đặt (1 lần) rồi ghi file key cho thẻ (_avg_card_keys.js)
+gui_hooks.profile_did_open.append(migrate_card_keys_and_write_file)
+gui_hooks.profile_did_open.append(ensure_starter_deck_and_note_type)
 
 print("✅ Gemini Editor Filler đã được tải thành công!")

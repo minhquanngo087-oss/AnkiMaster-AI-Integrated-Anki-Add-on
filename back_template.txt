@@ -197,20 +197,6 @@
     </form>
 </div>
 
-<!-- =============== TAB LOCK: MODAL =============== -->
-<div id="gem-password-modal" aria-modal="true" role="dialog" style="display: none;">
-    <div class="modal-content">
-        <h3 id="gem-password-title">🔐 MỞ KHOÁ</h3>
-        <p id="gem-password-message">Nhập mật khẩu để mở tab:</p>
-        <input type="password" id="gem-password-input" class="tappable" placeholder="Nhập mật khẩu..." maxlength="8" />
-        <div id="auto-unlock-feedback" class="auto-unlock-feedback">✅ Đúng mật khẩu, đang mở khoá…</div>
-        <div id="password-error" class="password-error">❌ Mật khẩu không đúng!</div>
-        <div class="modal-buttons">
-            <button id="gem-password-cancel">Hủy</button>
-            <button id="gem-password-confirm">Xác nhận</button>
-        </div>
-    </div>
-</div>
 
 <style>
 /* ==================== TỐI ƯU MOBILE TOÀN DIỆN ==================== */
@@ -591,68 +577,6 @@
     margin: 20px 0;
 }
 
-/* =============== TAB LOCK: CSS =============== */
-.gem-sec-wrap{position:relative}
-.gem-sec-locked{
-    filter:blur(6px) !important;
-    -webkit-filter:blur(6px) !important;
-    pointer-events:none !important;
-    user-select:none !important;
-    -webkit-user-select:none !important;
-}
-.gem-sec-overlay{
-    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    background:rgba(255,255,255,.85);backdrop-filter:blur(2px);
-    -webkit-backdrop-filter:blur(2px);
-    font-weight:700;color:#d32f2f;text-align:center;border-radius:10px;z-index:5;
-    padding:20px;box-sizing:border-box;
-    font-size:16px;line-height:1.4;
-}
-
-/* Icon trên tab */
-.tab-link.locked::after{content:" 🔒";opacity:.8}
-.tab-link.unlocked::after{content:" 🔓";opacity:.8}
-
-/* Nút nổi đóng/mở - TỐI ƯU CHO ĐIỆN THOẠI */
-#gem-lock-toggle-btn{
-    position:fixed;right:15px;bottom:15px;z-index:9999;border:0;border-radius:50px;
-    padding:14px 18px;background:#ef5350;color:#fff;font-weight:700;font-size:14px;
-    box-shadow:0 6px 20px rgba(0,0,0,.25);cursor:pointer;transition:.2s;
-    min-width:120px;text-align:center;
-    -webkit-tap-highlight-color:transparent;
-    touch-action:manipulation;
-}
-#gem-lock-toggle-btn.gem-open{background:#22c55e}
-#gem-lock-toggle-btn:active{transform:scale(0.96)}
-
-/* Modal mật khẩu - TỐI ƯU CHO ĐIỆN THOẠI */
-#gem-password-modal{
-    display:none;position:fixed;inset:0;z-index:10000;
-    background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;
-    padding:20px;box-sizing:border-box;
-}
-#gem-password-modal .modal-content{
-    width:100%;max-width:400px;background:#fff;border-radius:16px;padding:24px;
-    box-shadow:0 20px 40px rgba(0,0,0,.3);text-align:center;
-}
-#gem-password-modal h3{margin:0 0 12px;font-size:20px;color:#333;}
-#gem-password-modal p{margin:0 0 20px;color:#666;font-size:16px;line-height:1.4;}
-#gem-password-input{
-    width:100%;padding:16px;border:2px solid #ddd;border-radius:12px;font-size:18px;
-    text-align:center;letter-spacing:2px;box-sizing:border-box;
-    -webkit-appearance:none;
-}
-.modal-buttons{display:flex;gap:12px;margin-top:20px}
-.modal-buttons button{
-    flex:1;border:0;border-radius:12px;padding:14px;font-weight:700;cursor:pointer;
-    font-size:16px;-webkit-tap-highlight-color:transparent;
-}
-#gem-password-cancel{background:#ef4444;color:#fff}
-#gem-password-confirm{background:#22c55e;color:#fff}
-.auto-unlock-feedback{display:none;margin-top:12px;color:#16a34a;font-weight:700;font-size:14px;}
-.auto-unlock-feedback.show{display:block}
-.password-error{display:none;margin-top:12px;color:#ef4444;font-weight:700;font-size:14px;}
-.password-error.show{display:block}
 
 /* Tối ưu tab cho điện thoại */
 .tabs {
@@ -954,17 +878,41 @@ function speakExampleEdge(event) {
     speakWithEdgeReal(text, event);
 }
 
-/* ==================== CẤU HÌNH GEMINI TTS TỐI ƯU ==================== */
-// ⚠️ CẤU HÌNH: Dán danh sách API Key của bạn vào đây
-var GEMINI_TTS_API_KEYS = `
-AIzaSyAP****Cdis
-AIzaSyDR****vCW0
-AIzaSyAo****aIcg
-AIzaSyAv****9KS0
-AQ.Ab8****V-1Q
-AQ.Ab8****DItw
-AQ.Ab8****B7bw
-`; 
+/* ==================== API KEY CỦA THẺ (LẤY TỪ CÀI ĐẶT ADD-ON) ==================== */
+// Thẻ không ghi key trong code nữa. Nhập key ở máy tính: Tools > Cài đặt Gemini > khung "API cho thẻ" và "Gemini TTS".
+// Add-on ghi key ra file media _avg_card_keys.js; file này tự Sync sang điện thoại nên AnkiMobile/AnkiDroid vẫn dùng được.
+var AVG_KEYS_FILE = '_avg_card_keys.js';
+var AVG_TTS_DEFAULT_MODEL = 'gemini-2.5-flash-preview-tts';
+var AVG_NO_KEY_MSG = 'Chưa có API key cho thẻ. Trên máy tính: Tools > Cài đặt Gemini > nhập key vào khung "API cho thẻ", bấm Lưu rồi Sync.';
+var avgKeysLoading = null;
+
+// Nạp file key một lần (Promise). Nếu thẻ đã có key (add-on vừa cập nhật) thì dùng luôn.
+function avgLoadCardKeys() {
+    if (window.AVG_CARD_KEYS) return Promise.resolve(window.AVG_CARD_KEYS);
+    if (avgKeysLoading) return avgKeysLoading;
+    avgKeysLoading = new Promise(function(resolve) {
+        var s = document.createElement('script');
+        s.src = AVG_KEYS_FILE + '?v=' + Date.now();   // tránh dùng bản cũ trong bộ nhớ đệm sau khi đổi key
+        var done = function() { clearTimeout(timer); resolve(window.AVG_CARD_KEYS || {}); };
+        var timer = setTimeout(function() { avgKeysLoading = null; done(); }, 3000);   // không nạp được thì không treo
+        s.onload = done;
+        s.onerror = function() { avgKeysLoading = null; done(); };
+        document.head.appendChild(s);
+    });
+    return avgKeysLoading;
+}
+function avgCleanKeys(list) {
+    return (list || []).map(function(k) { return String(k).trim(); })
+        .filter(function(k) { return k.length > 10 && k.indexOf('*') < 0; });
+}
+// kind: 'text' (Luyện câu, Áp dụng) hoặc 'tts'. Khung nào trống thì dùng khung còn lại.
+function avgCardKeys(kind) {
+    var cfg = window.AVG_CARD_KEYS || {};
+    var main = avgCleanKeys(cfg[kind]);
+    return main.length ? main : avgCleanKeys(cfg[kind === 'tts' ? 'text' : 'tts']);
+}
+function avgTtsModel() { return (window.AVG_CARD_KEYS || {}).tts_model || AVG_TTS_DEFAULT_MODEL; }
+avgLoadCardKeys();
 
 var GEMINI_TTS_VOICE = "Kore"; 
 // Timeout 5 giây (đủ nhanh cho mobile, nếu mạng chậm thì chuyển fallback luôn)
@@ -977,15 +925,13 @@ var globalTimeoutId = null;          // Dùng để đếm giờ
 var ttsKeySnapshot = null;           // Danh sách key cố định trong một lượt đọc (không đổi giữa các lần thử key)
 
 // Hàm lấy danh sách Key
-function getGeminiTTSKeys() {
-    if (!GEMINI_TTS_API_KEYS) return [];
-    const all = GEMINI_TTS_API_KEYS.split(/[\n,;]+/)
-        .map(k => k.trim())
-        .filter(k => k && k.length > 10 && !k.includes("EXAMPLE"));
+function avgAliveKeys(all) {
     // Bỏ qua key đã biết là bị xoá/thu hồi; nếu tất cả đều bị đánh dấu thì vẫn thử hết
     const alive = all.filter(k => !geminiIsDeadKey(k));
     return alive.length ? alive : all;
 }
+function getGeminiTTSKeys() { return avgAliveKeys(avgCardKeys('tts')); }
+function getGeminiCardKeys() { return avgAliveKeys(avgCardKeys('text')); }
 
 // Wrapper function
 function speakTextWithEdge(text, event) {
@@ -1108,7 +1054,7 @@ async function speakWithGemini(text, event, keyIndex = 0) {
 
     try {
         console.log(`Đang gọi Gemini TTS (Key #${keyIndex + 1})...`);
-        var url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${currentKey}`;
+        var url = `https://generativelanguage.googleapis.com/v1beta/models/${avgTtsModel()}:generateContent?key=${currentKey}`;
         
         // Xác định languageCode dựa trên ngôn ngữ: en-GB cho tiếng Anh, 
         // các ngôn ngữ khác dùng locale tương ứng
@@ -1593,7 +1539,7 @@ function showPracticeMessage(message, type) {
 }
 
 /* ==================== GỌI GEMINI DÙNG CHUNG (LUYỆN CÂU, ÁP DỤNG) ==================== */
-// Gọi thẳng từ thẻ nên chạy được cả Anki máy tính lẫn điện thoại (dùng danh sách key GEMINI_TTS_API_KEYS ở trên).
+// Gọi thẳng từ thẻ nên chạy được cả Anki máy tính lẫn điện thoại (key lấy từ khung "API cho thẻ" trong cài đặt add-on).
 // Thử lần lượt từng model: lượt miễn phí của Google tính riêng cho từng model trên mỗi project,
 // nên có model dự phòng thì tổng số lượt dùng được nhiều hơn.
 // Mỗi đời model tắt "suy nghĩ" theo cách khác nhau: 2.5 dùng thinkingBudget, 3.x dùng thinkingLevel.
@@ -1644,8 +1590,9 @@ function geminiFailMessage(stats, calls) {
     return 'Không gọi được Gemini (' + parts.concat(stats.other.slice(-2)).join('; ') + ')';
 }
 async function geminiGenerateJson(prompt, schema, temperature) {
-    const keys = getGeminiTTSKeys();
-    if (!keys.length) throw new Error('Chưa có API key trong thẻ (GEMINI_TTS_API_KEYS)');
+    await avgLoadCardKeys();
+    const keys = getGeminiCardKeys();
+    if (!keys.length) throw new Error(AVG_NO_KEY_MSG);
     const MINUTE = 60000, HOUR = 60 * MINUTE, DAY = 24 * HOUR;
     const stats = { invalid: 0, quota: 0, busy: 0, other: [] };
     const started = Date.now();
@@ -3469,291 +3416,6 @@ function addTTSButtonsToAllWords(){
   });
 }
 
-// ==================== CẬP NHẬT HỆ THỐNG KHÓA CHO NÚT MỚI ====================
-function initializeTabLock() {
-    const LOCK_PASSWORD = "1";
-    const STORAGE_KEY = "gem_section_unlocked_v1";
-    const lockedSections = ['BoSung', 'MoRong', 'Radicals', 'ApDung'];
-
-    // Kiểm tra trạng thái đã mở từ localStorage
-    const savedUnlocked = localStorage.getItem(STORAGE_KEY) === "1";
-    window.__gem_sections_unlocked = savedUnlocked;
-
-    let currentTabToOpen = null;
-
-    function applyLockState() {
-        const unlocked = !!window.__gem_sections_unlocked;
-
-        lockedSections.forEach(sectionId => {
-            const element = document.getElementById(sectionId);
-            if (!element) return;
-
-            if (!element.classList.contains('gem-sec-wrap')) {
-                element.classList.add('gem-sec-wrap');
-            }
-
-            if (unlocked) {
-                element.classList.remove('gem-sec-locked');
-                const existingOverlay = element.querySelector('.gem-sec-overlay');
-                if (existingOverlay) {
-                    existingOverlay.remove();
-                }
-                
-                element.style.pointerEvents = 'auto';
-                element.style.userSelect = 'auto';
-                element.style.filter = 'none';
-                element.style.webkitFilter = 'none';
-            } else {
-                element.classList.add('gem-sec-locked');
-                if (!element.querySelector('.gem-sec-overlay')) {
-                    const overlay = document.createElement('div');
-                    overlay.className = 'gem-sec-overlay';
-                    overlay.innerHTML = '🔒 ĐÃ KHOÁ<br><small>Nhấp vào tab và nhập mật khẩu để mở</small>';
-                    element.appendChild(overlay);
-                }
-            }
-        });
-
-        updateTabLockIcons();
-        updateLockButton();
-    }
-
-    function updateTabLockIcons() {
-        const unlocked = !!window.__gem_sections_unlocked;
-        const lockedTabNames = {
-            'BoSung': '➕ Bổ sung',
-            'MoRong': '🚀 Mở rộng', 
-            'Radicals': '🖌️ Bộ',
-            'ApDung': '📝 Áp dụng'
-        };
-
-        Object.keys(lockedTabNames).forEach(sectionId => {
-            const tabLinks = document.querySelectorAll('.tab-link');
-            tabLinks.forEach(tabLink => {
-                const tabText = tabLink.textContent || tabLink.innerText;
-                const targetText = lockedTabNames[sectionId];
-                
-                if (tabText.includes(targetText.replace(' 🔒', '').replace(' 🔓', ''))) {
-                    // Biểu tượng 🔒/🔓 do CSS (.tab-link.locked::after) thêm vào, không chèn thêm vào chữ
-                    tabLink.innerHTML = targetText;
-                    tabLink.classList.toggle('locked', !unlocked);
-                    tabLink.classList.toggle('unlocked', unlocked);
-                }
-            });
-        });
-    }
-
-    function showPasswordModal(title, message, tabToOpen = null) {
-        currentTabToOpen = tabToOpen;
-        document.getElementById('gem-password-title').textContent = title;
-        document.getElementById('gem-password-message').textContent = message;
-        document.getElementById('gem-password-input').value = '';
-        document.getElementById('auto-unlock-feedback').classList.remove('show');
-        document.getElementById('password-error').classList.remove('show');
-        document.getElementById('gem-password-modal').style.display = 'flex';
-        
-        setTimeout(() => {
-            const input = document.getElementById('gem-password-input');
-            input.focus();
-        }, 100);
-    }
-
-    function hidePasswordModal() {
-        document.getElementById('gem-password-modal').style.display = 'none';
-        currentTabToOpen = null;
-    }
-
-    function showPasswordError() {
-        const errorElement = document.getElementById('password-error');
-        errorElement.classList.add('show');
-        setTimeout(() => {
-            errorElement.classList.remove('show');
-        }, 3000);
-    }
-
-    function autoUnlock() {
-        const feedback = document.getElementById('auto-unlock-feedback');
-        feedback.classList.add('show');
-        
-        setTimeout(() => {
-            window.__gem_sections_unlocked = true;
-            localStorage.setItem(STORAGE_KEY, "1");
-            applyLockState();
-            hidePasswordModal();
-            
-            if (currentTabToOpen) {
-                setTimeout(() => {
-                    openTabDirectly(currentTabToOpen);
-                }, 300);
-            }
-        }, 500);
-    }
-
-    function openTabDirectly(tabName) {
-        const tabcontent = document.getElementsByClassName("tab-content");
-        for (let i = 0; i < tabcontent.length; i++) {
-            tabcontent[i].style.display = "none";
-        }
-        
-        const tablinks = document.getElementsByClassName("tab-link");
-        for (let i = 0; i < tablinks.length; i++) {
-            tablinks[i].className = tablinks[i].className.replace(" active", "");
-        }
-        
-        const targetTab = document.getElementById(tabName);
-        if (targetTab) {
-            targetTab.style.display = "block";
-            
-            const targetTabLink = document.querySelector(`.tab-link[onclick*="${tabName}"]`);
-            if (targetTabLink) {
-                targetTabLink.className += " active";
-            }
-        }
-    }
-
-    function setupPasswordModal() {
-        const modal = document.getElementById('gem-password-modal');
-        const input = document.getElementById('gem-password-input');
-        const confirmBtn = document.getElementById('gem-password-confirm');
-        const cancelBtn = document.getElementById('gem-password-cancel');
-
-        input.addEventListener('input', function(e) {
-            const password = e.target.value;
-            if (password === LOCK_PASSWORD) {
-                autoUnlock();
-            }
-        });
-
-        const handleConfirm = function() {
-            const password = input.value;
-            if (password === LOCK_PASSWORD) {
-                autoUnlock();
-            } else {
-                showPasswordError();
-                input.value = '';
-                input.focus();
-            }
-        };
-
-        const handleCancel = function() {
-            hidePasswordModal();
-        };
-
-        confirmBtn.addEventListener('click', handleConfirm);
-        cancelBtn.addEventListener('click', handleCancel);
-
-        input.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                handleConfirm();
-            }
-        });
-
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                handleCancel();
-            }
-        });
-    }
-
-    function createLockButton() {
-        if (document.getElementById('gem-lock-toggle-btn')) return;
-        
-        const lockBtn = document.createElement('button');
-        lockBtn.id = 'gem-lock-toggle-btn';
-        document.body.appendChild(lockBtn);
-        
-        const handleLockButtonClick = function() {
-            if (window.__gem_sections_unlocked) {
-                window.__gem_sections_unlocked = false;
-                localStorage.setItem(STORAGE_KEY, "0");
-                applyLockState();
-            } else {
-                showPasswordModal('🔐 MỞ KHOÁ', 'Nhập mật khẩu để mở khoá tất cả tab:');
-            }
-        };
-        
-        lockBtn.addEventListener('click', handleLockButtonClick);
-        lockBtn.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            handleLockButtonClick();
-        });
-        
-        updateLockButton();
-    }
-
-    function updateLockButton() {
-        const btn = document.getElementById('gem-lock-toggle-btn');
-        if (!btn) return;
-        
-        if (window.__gem_sections_unlocked) {
-            btn.innerHTML = '🔓 ĐANG MỞ<br>Bấm để khoá';
-            btn.classList.remove('gem-locked');
-            btn.classList.add('gem-open');
-        } else {
-            btn.innerHTML = '🔒 ĐANG KHOÁ<br>Bấm để mở';
-            btn.classList.remove('gem-open');
-            btn.classList.add('gem-locked');
-        }
-    }
-
-    function setupTabInterception() {
-        const tabLinks = document.querySelectorAll('.tab-link');
-        tabLinks.forEach(link => {
-            const onclickAttr = link.getAttribute('onclick') || '';
-            const match = onclickAttr.match(/openTab\(event,\s*'(\w+)'\)/);
-            if (!match) return;
-            
-            const targetTab = match[1];
-            if (!lockedSections.includes(targetTab)) return;
-
-            const handleTabClick = function(e) {
-                if (!window.__gem_sections_unlocked) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    showPasswordModal('🔐 MỞ KHOÁ', `Nhập mật khẩu để mở tab "${getTabDisplayName(targetTab)}":`, targetTab);
-                }
-            };
-
-            link.addEventListener('click', handleTabClick);
-            link.addEventListener('touchend', function(e) {
-                if (!window.__gem_sections_unlocked) {
-                    e.preventDefault();
-                    handleTabClick(e);
-                }
-            });
-        });
-    }
-
-    function getTabDisplayName(tabId) {
-        const names = {
-            'BoSung': 'Bổ sung',
-            'MoRong': 'Mở rộng',
-            'Radicals': 'Bộ',
-            'LuyenCau': 'Luyện câu',
-            'ApDung': 'Áp dụng'
-        };
-        return names[tabId] || tabId;
-    }
-
-    function initLockSystem() {
-        createLockButton();
-        setupPasswordModal();
-        applyLockState();
-        setupTabInterception();
-
-        setTimeout(applyLockState, 500);
-    }
-
-    setTimeout(initLockSystem, 100);
-}
-
-
-// Gọi hàm khởi tạo khoá sau khi mọi thứ đã tải
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeTabLock);
-} else {
-    initializeTabLock();
-}
 
 // Hàm trích xuất Hán tự và Pinyin
 function extractHanziAndPinyin(text) {
