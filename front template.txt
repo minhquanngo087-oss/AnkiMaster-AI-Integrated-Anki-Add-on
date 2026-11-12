@@ -116,7 +116,7 @@
 <div class="spell-check-input-container">
     <div class="spell-check-title">✏️ Nhập từ vựng bạn nghĩ tới</div>
     <input type="text" 
-           class="spell-check-input" 
+           class="spell-check-input tappable" 
            id="spellCheckInput" 
            placeholder="Gõ từ tại đây..."
            oninput="autoSaveSpellingInput()">
@@ -126,13 +126,18 @@
 </div>
 
 <script>
+// Stop requests belonging to the previous answer before showing another question.
+if (window.__avgCardSession && window.__avgCardSession.dispose) window.__avgCardSession.dispose();
 function autoSaveSpellingInput() {
-    const userInput = document.getElementById('spellCheckInput').value.trim();
-    if (userInput) {
-        localStorage.setItem('userSpellingInput', userInput);
-    }
+    const input = document.getElementById('spellCheckInput');
+    if (!input) return;
+    const text = input.value.trim();
+    window.__avgSpellingInput = text;
+    try {
+        if (text) localStorage.setItem('userSpellingInput', text);
+        else localStorage.removeItem('userSpellingInput');
+    } catch (e) { /* the back template can still read session memory */ }
 }
-
 // Tự động lưu khi người dùng rời khỏi ô input
 document.getElementById('spellCheckInput').addEventListener('blur', function() {
     autoSaveSpellingInput();

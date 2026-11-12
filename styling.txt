@@ -1,3 +1,4 @@
+/* AVG_CARD_STYLE_VERSION: 2026-11-11.5 */
 /* === TỔNG THỂ GIAO DIỆN THẺ === */
 .card { font-family: Arial, sans-serif; background-color: #f5f7fa; color: #333; text-align: center; }
 .card-container { padding: 20px; max-width: 480px; margin: auto; }
@@ -3715,3 +3716,29 @@
 .collapsible-section {
     transition: all 0.3s ease;
 }
+
+/* ==================== CHỐNG TRÀN VIỀN (AVG_CARD_STYLE_VERSION: 2026-11-11.5) ==================== */
+/* Khối này đặt cuối cùng và dùng !important vì mặt trước/mặt sau còn CSS nhúng riêng. Không đổi màu sắc. */
+.avg-overflow-fix { display: block; }
+.card { overflow-x: hidden; }
+.card-container { box-sizing: border-box !important; width: 100% !important; max-width: 100% !important; overflow-wrap: anywhere; word-break: break-word; }
+.card-container *, .card-container *::before, .card-container *::after { box-sizing: border-box !important; max-width: 100% !important; }
+.card-container img, .card-container iframe, .card-container video { height: auto !important; }
+.card-container .word { font-size: clamp(28px, 9vw, 40px) !important; line-height: 1.2; }
+.card-container .tabs { flex-wrap: wrap !important; }
+.card-container .tab-link { min-width: 0 !important; flex: 1 1 auto !important; }
+.card-container .etymology-origin-grid, .card-container .etymology-structure-grid,
+.card-container .radicals-grid, .card-container .components-list { grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)) !important; }
+.card-container .origin-item { gap: 10px; }
+.card-container .origin-value, .card-container .item-content, .card-container .example-with-tts > .item-content,
+.card-container .component-details, .card-container .radical-details, .card-container .etymology-english { min-width: 0 !important; }
+.card-container .example-with-tts > .item-content { flex: 1 1 200px; }
+.card-container .exercise-input { min-width: 0 !important; width: 11em !important; }
+.card-container .game-input { width: 100% !important; }
+.card-container .rd-pop { max-width: min(260px, 100%) !important; }
+.card-container .modal { max-width: none !important; }
+.card-container .modal-content { width: calc(100% - 32px) !important; }
+.card-container .practice-buttons, .card-container .sp-actions, .card-container .exercise-controls, .card-container .game-controls { flex-wrap: wrap !important; }
+.card-container .context-content, .card-container .rd-text, .card-container .story-text { overflow-wrap: anywhere; text-align: left !important; }
+.card-container form input[type="text"] { width: auto !important; flex: 1; }
+.card-container pre, .card-container table { display: block; overflow-x: auto; }

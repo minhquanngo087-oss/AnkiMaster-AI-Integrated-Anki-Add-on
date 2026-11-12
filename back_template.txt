@@ -124,9 +124,9 @@
         <div class="sp-task" id="sp-task"></div>
         <textarea id="sp-input" class="sp-input tappable" rows="3" placeholder="Viết câu trả lời của bạn ở đây..." autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"></textarea>
         <div class="sp-actions">
-            <button type="button" class="sp-btn sp-btn-new" id="sp-btn-new" onclick="spNewTask()">🎲 Đề mới</button>
-            <button type="button" class="sp-btn sp-btn-check" id="sp-btn-check" onclick="spCheck()">✅ Chấm</button>
-            <button type="button" class="sp-btn sp-btn-reveal" id="sp-btn-reveal" onclick="spReveal()">👀 Xem đáp án</button>
+            <button type="button" class="sp-btn tappable sp-btn-new" id="sp-btn-new" onclick="spNewTask()">🎲 Đề mới</button>
+            <button type="button" class="sp-btn tappable sp-btn-check" id="sp-btn-check" onclick="spCheck()">✅ Chấm</button>
+            <button type="button" class="sp-btn tappable sp-btn-reveal" id="sp-btn-reveal" onclick="spReveal()">👀 Xem đáp án</button>
         </div>
         <div class="sp-status" id="sp-status" style="display: none;"></div>
         <div class="sp-result" id="sp-result"></div>
@@ -664,6 +664,23 @@
 .sp-task-hint{margin-top:8px;color:#666;font-size:14px;}
 .sp-task-must{margin-top:6px;font-size:13px;color:#555;}
 .sp-task-must code{background:#e3f2fd;border-radius:4px;padding:1px 6px;color:#0d47a1;}
+.sp-structure{margin-top:8px;padding:8px 10px;background:#f1f8e9;border:1px dashed #8BC34A;border-radius:8px;font-size:14px;color:#33691e;line-height:1.5;}
+.sp-structure-label{font-size:12px;font-weight:bold;text-transform:uppercase;color:#558b2f;margin-bottom:2px;}
+.sp-structure-pattern{font-weight:bold;font-size:1.05em;color:#1b5e20;}
+.sp-breakdown{background:#fff;border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:4px solid #8BC34A;line-height:1.5;color:#333;}
+.sp-bd-parts{margin:6px 0;}
+.sp-bd-row{display:flex;gap:8px;flex-wrap:wrap;align-items:baseline;padding:5px 0;border-top:1px dashed #e0e0e0;}
+.sp-bd-row:first-child{border-top:none;}
+.sp-bd-slot{min-width:64px;padding:0 6px;background:#f1f8e9;border-radius:4px;font-size:13px;font-weight:bold;color:#558b2f;text-align:center;}
+.sp-bd-text{font-weight:bold;color:#222;}
+.sp-bd-note{flex-basis:100%;color:#666;font-size:13px;}
+.sp-bd-explain{margin-top:6px;font-size:14px;color:#444;}
+.sp-bd-map{margin:6px 0;padding:6px 10px;background:#f1f8e9;border-radius:6px;font-size:15px;color:#222;line-height:1.6;}
+.sp-bd-map b{color:#558b2f;}
+.sp-bd-note i{font-style:normal;font-weight:bold;color:#558b2f;}
+.sp-legend{margin-top:6px;padding-top:6px;border-top:1px dashed #c5e1a5;font-size:13px;color:#444;line-height:1.6;}
+.sp-legend-title{font-weight:bold;color:#558b2f;}
+.sp-legend b{color:#1b5e20;}
 .sp-muted{color:#888;}
 .sp-input{width:100%;box-sizing:border-box;padding:12px;border:2px solid #e0e0e0;border-radius:8px;font-size:16px;line-height:1.5;font-family:inherit;resize:vertical;min-height:70px;}
 .sp-input:focus{outline:none;border-color:#4CAF50;}
@@ -675,6 +692,9 @@
 .sp-btn-reveal{background:#9e9e9e;}
 .sp-btn-next{background:#9C27B0;width:100%;margin-top:12px;}
 .sp-status{align-items:center;gap:10px;margin-top:12px;padding:12px;background:#e3f2fd;border-radius:8px;color:#0d47a1;font-weight:bold;}
+.sp-actions .sp-btn,.sp-level{touch-action:manipulation;}
+.sp-status{flex-wrap:wrap;}
+.sp-status .sp-btn-cancel{flex:0 0 auto;min-width:64px;background:#546e7a;touch-action:manipulation;}
 .sp-spinner{width:18px;height:18px;border:3px solid #bbdefb;border-top-color:#1565c0;border-radius:50%;animation:spin 1s linear infinite;display:inline-block;flex-shrink:0;}
 .sp-result{margin-top:12px;}
 .sp-verdict{padding:12px;border-radius:8px;margin-bottom:10px;line-height:1.5;}
@@ -743,6 +763,40 @@
 </style>
 
 <script>
+// AVG_MOBILE_PRACTICE_VERSION: 2026-11-12.3
+// Anki may reuse one webview for several cards. Dispose of the previous card first.
+if (window.__avgCardSession && window.__avgCardSession.dispose) window.__avgCardSession.dispose();
+var avgCardSession = {
+    root: document.getElementById('sp-container'), pending: [], timers: [], disposed: false
+};
+window.__avgCardSession = avgCardSession;
+function avgSessionIsCurrent(session) {
+    return !!(session && !session.disposed && session.root && session.root === document.getElementById('sp-container'));
+}
+avgCardSession.dispose = function() {
+    const session = this;
+    if (session.disposed) return;
+    session.disposed = true;
+    session.pending.slice().forEach(function(cancel) { cancel(); });
+    session.timers.forEach(clearTimeout);
+    if (session.observer) session.observer.disconnect();
+    if (session.onResume) document.removeEventListener('visibilitychange', session.onResume);
+};
+if (typeof MutationObserver === 'function') {
+    const session = avgCardSession;
+    session.observer = new MutationObserver(function() {
+        if (!avgSessionIsCurrent(session)) session.dispose();
+    });
+    session.observer.observe(document.body, { childList: true, subtree: true });
+}
+avgCardSession.onResume = function() {
+    if (document.hidden || !avgSessionIsCurrent(avgCardSession)) return;
+    if (spState && spState.busy && spState.request && Date.now() - spState.request.startedAt >= GEMINI_TOTAL_TIMEOUT_MS) {
+        spCancelRequest('Lượt vừa rồi đã hết thời gian khi ứng dụng bị gián đoạn. Câu đang viết vẫn được giữ; bạn có thể thử lại.');
+    }
+};
+document.addEventListener('visibilitychange', avgCardSession.onResume);
+
 // ==================== TOGGLE COLLAPSIBLE SECTIONS ====================
 function toggleSection(sectionId) {
     const section = document.getElementById(sectionId);
@@ -884,26 +938,48 @@ function speakExampleEdge(event) {
 var AVG_KEYS_FILE = '_avg_card_keys.js';
 var AVG_TTS_DEFAULT_MODEL = 'gemini-2.5-flash-preview-tts';
 var AVG_NO_KEY_MSG = 'Chưa có API key cho thẻ. Trên máy tính: Tools > Cài đặt Gemini > nhập key vào khung "API cho thẻ", bấm Lưu rồi Sync.';
-var avgKeysLoading = null;
-
-// Nạp file key một lần (Promise). Nếu thẻ đã có key (add-on vừa cập nhật) thì dùng luôn.
+// Share only an in-flight load; a failed load must never become a cached success.
+var avgKeysLoading = window.__avgKeysLoading || null;
 function avgLoadCardKeys() {
-    if (window.AVG_CARD_KEYS) return Promise.resolve(window.AVG_CARD_KEYS);
-    if (avgKeysLoading) return avgKeysLoading;
-    avgKeysLoading = new Promise(function(resolve) {
-        var s = document.createElement('script');
-        s.src = AVG_KEYS_FILE + '?v=' + Date.now();   // tránh dùng bản cũ trong bộ nhớ đệm sau khi đổi key
-        var done = function() { clearTimeout(timer); resolve(window.AVG_CARD_KEYS || {}); };
-        var timer = setTimeout(function() { avgKeysLoading = null; done(); }, 3000);   // không nạp được thì không treo
-        s.onload = done;
-        s.onerror = function() { avgKeysLoading = null; done(); };
-        document.head.appendChild(s);
+    const ready = function() {
+        const cfg = window.AVG_CARD_KEYS || {};
+        return avgCleanKeys(cfg.text).length || avgCleanKeys(cfg.tts).length;
+    };
+    if (ready()) return Promise.resolve(window.AVG_CARD_KEYS);
+    if (window.__avgKeysLoading) return window.__avgKeysLoading;
+    const load = function(attempt) {
+        return new Promise(function(resolve) {
+            const script = document.createElement('script');
+            let settled = false;
+            // Query strings on local media URLs are not handled consistently by mobile webviews.
+            script.src = AVG_KEYS_FILE;
+            script.async = true;
+            const finish = function() {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                script.onload = script.onerror = null;
+                if (script.parentNode) script.parentNode.removeChild(script);
+                resolve(ready() ? window.AVG_CARD_KEYS : null);
+            };
+            const timer = setTimeout(finish, 5000);
+            script.onload = script.onerror = finish;
+            (document.head || document.documentElement).appendChild(script);
+        }).then(function(cfg) { return cfg || (attempt ? {} : load(1)); });
+    };
+    const promise = load(0).then(function(cfg) {
+        if (window.__avgKeysLoading === promise) window.__avgKeysLoading = null;
+        avgKeysLoading = null;
+        return cfg;
     });
-    return avgKeysLoading;
+    avgKeysLoading = window.__avgKeysLoading = promise;
+    return promise;
 }
 function avgCleanKeys(list) {
-    return (list || []).map(function(k) { return String(k).trim(); })
-        .filter(function(k) { return k.length > 10 && k.indexOf('*') < 0; });
+    if (typeof list === 'string') list = list.split(/[\n,]+/);
+    if (!Array.isArray(list)) return [];
+    return list.map(function(k) { return String(k).trim(); })
+        .filter(function(k, i, keys) { return k.length > 10 && k.indexOf('*') < 0 && keys.indexOf(k) === i; });
 }
 // kind: 'text' (Luyện câu, Áp dụng) hoặc 'tts'. Khung nào trống thì dùng khung còn lại.
 function avgCardKeys(kind) {
@@ -1544,18 +1620,16 @@ function showPracticeMessage(message, type) {
 // nên có model dự phòng thì tổng số lượt dùng được nhiều hơn.
 // Mỗi đời model tắt "suy nghĩ" theo cách khác nhau: 2.5 dùng thinkingBudget, 3.x dùng thinkingLevel.
 var GEMINI_TEXT_MODELS = [
-    { model: 'gemini-3.8-flash', thinking: { thinkingLevel: 'low' } },
-    { model: 'gemini-2.5-flash', thinking: { thinkingBudget: 0 } },
     { model: 'gemini-3.5-flash-lite', thinking: { thinkingLevel: 'low' } },
-    { model: 'gemini-flash-lite-latest', thinking: { thinkingLevel: 'low' } }
+    { model: 'gemini-3.8-flash', thinking: { thinkingLevel: 'low' } },
+    { model: 'gemini-2.5-flash', thinking: { thinkingBudget: 0 } }
 ];
 var GEMINI_TEXT_TIMEOUT_MS = 25000;
-var GEMINI_MAX_CALLS = 8;           // tối đa ngần này lần gọi (qua các key/model) cho mỗi yêu cầu
-var GEMINI_HEALTH_KEY = 'gemini_health_v1';
+var GEMINI_TOTAL_TIMEOUT_MS = 65000;
+var GEMINI_MAX_CALLS = 8;
+var GEMINI_HEALTH_KEY = 'gemini_health_v2';
 var geminiKeyStart = 0;
 
-// Ghi nhớ trong máy: key chết (dead), key hết lượt với từng model (block), model đang quá tải (busy)
-// -> lần sau bỏ qua ngay thay vì thử lại từng cái.
 function geminiHealth() {
     const h = spStoreGet(GEMINI_HEALTH_KEY) || {};
     return { dead: h.dead || {}, block: h.block || {}, busy: h.busy || {} };
@@ -1570,90 +1644,194 @@ function geminiMark(kind, id, ms) {
     spStoreSet(GEMINI_HEALTH_KEY, h);
 }
 function geminiIsDeadKey(key) { return (geminiHealth().dead[geminiKeyId(key)] || 0) > Date.now(); }
-async function geminiReadError(res) {
-    const j = await res.json().catch(function() { return {}; });
-    const e = j.error || {}, details = e.details || [];
-    const reasons = details.map(function(d) { return d.reason; }).filter(Boolean);
-    const quota = [];
-    details.forEach(function(d) { (d.violations || []).forEach(function(v) { quota.push(v.quotaId || ''); }); });
-    return { status: res.status, reason: reasons[0] || e.status || '', quota: quota.join(' '), message: e.message || '' };
+function geminiError(name, message) {
+    const err = new Error(message);
+    err.name = name;
+    return err;
+}
+function geminiEnsureActive(session, options) {
+    if (!avgSessionIsCurrent(session) || options.cancelled || (options.isCurrent && !options.isCurrent())) {
+        throw geminiError('CancelledError', 'Đã dừng yêu cầu.');
+    }
+}
+// One cancellable operation owns its timer, including response-body reads and retry waits.
+function geminiOperation(session, options, timeout, start) {
+    return new Promise(function(resolve, reject) {
+        let finished = false, stop = null;
+        const finish = function(err, value) {
+            if (finished) return;
+            finished = true;
+            clearTimeout(timer);
+            const i = session.pending.indexOf(cancel);
+            if (i >= 0) session.pending.splice(i, 1);
+            if (options.cancel === cancel) options.cancel = null;
+            if (err && stop) stop();
+            if (err) reject(err); else resolve(value);
+        };
+        const cancel = function() { finish(geminiError('CancelledError', 'Đã dừng yêu cầu.')); };
+        const timer = setTimeout(function() { finish(geminiError('TimeoutError', 'Kết nối quá thời gian chờ.')); }, timeout);
+        session.pending.push(cancel);
+        options.cancel = cancel;
+        try {
+            geminiEnsureActive(session, options);
+            stop = start(function(value) { finish(null, value); }, function(err) { finish(err); });
+        } catch (e) { finish(e); }
+    });
+}
+function geminiWait(ms, session, options) {
+    return geminiOperation(session, options, ms + 1000, function(resolve) {
+        const timer = setTimeout(resolve, ms);
+        return function() { clearTimeout(timer); };
+    });
+}
+function geminiRequest(url, body, timeout, session, options) {
+    return geminiOperation(session, options, timeout, function(resolve, reject) {
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        const init = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body };
+        if (controller) init.signal = controller.signal;
+        Promise.resolve().then(function() { return fetch(url, init); }).then(async function(res) {
+            const data = await res.json().catch(function() { return null; });
+            resolve({ response: res, data: data });
+        }).catch(reject);
+        return function() { if (controller) controller.abort(); };
+    });
+}
+async function geminiReadError(res, data) {
+    // TTS still calls this helper with a Response only.
+    if (arguments.length < 2) data = await res.json().catch(function() { return null; });
+    const e = (data && data.error) || {}, details = e.details || [];
+    const reasons = [], quota = [];
+    let retryMs = 0;
+    details.forEach(function(d) {
+        if (d.reason) reasons.push(d.reason);
+        (d.violations || []).forEach(function(v) { quota.push(v.quotaId || ''); });
+        if (d.retryDelay) retryMs = Math.max(retryMs, parseFloat(d.retryDelay) * 1000 || 0);
+    });
+    const retryAfter = res.headers && res.headers.get('Retry-After');
+    if (retryAfter) {
+        const seconds = Number(retryAfter);
+        retryMs = Math.max(retryMs, Number.isFinite(seconds) ? seconds * 1000 : Date.parse(retryAfter) - Date.now() || 0);
+    }
+    return { status: res.status, reason: reasons[0] || e.status || '', quota: quota.join(' '), message: e.message || '', retryMs: retryMs };
+}
+function geminiValidateJson(data, schema) {
+    if (!schema) return;
+    const type = String(schema.type || '').toUpperCase();
+    const valid = type === 'OBJECT' ? data && typeof data === 'object' && !Array.isArray(data)
+        : type === 'ARRAY' ? Array.isArray(data) : type === 'BOOLEAN' ? typeof data === 'boolean'
+        : type === 'STRING' ? typeof data === 'string' : true;
+    if (!valid) throw geminiError('InvalidResponseError', 'AI trả về dữ liệu chưa đúng định dạng.');
+    if (type === 'OBJECT') {
+        (schema.required || []).forEach(function(k) {
+            if (data[k] == null) throw geminiError('InvalidResponseError', 'Phản hồi AI thiếu thông tin cần thiết.');
+        });
+        Object.keys(schema.properties || {}).forEach(function(k) {
+            if (data[k] != null) geminiValidateJson(data[k], schema.properties[k]);
+        });
+    } else if (type === 'ARRAY') data.forEach(function(item) { geminiValidateJson(item, schema.items); });
 }
 function geminiFailMessage(stats, calls) {
-    if (!calls) return 'Tất cả key/model đang tạm nghỉ (hết lượt hoặc quá tải). Thử lại sau ít phút.';
-    if (stats.quota && !stats.busy && !stats.other.length) {
-        return 'Đã hết lượt Gemini miễn phí trên các key còn dùng được. Thử lại sau, hoặc thêm key mới tạo ở tài khoản Google khác.';
-    }
+    if (!calls) return 'Các key/model đang tạm nghỉ do giới hạn lượt dùng hoặc quá tải. Hãy thử lại sau ít phút.';
+    if (stats.quota && !stats.busy && !stats.other.length) return 'Gemini đang giới hạn lượt dùng. Hãy chờ rồi thử lại hoặc kiểm tra hạn mức API.';
     const parts = [];
-    if (stats.invalid) parts.push(stats.invalid + ' key không còn hợp lệ');
-    if (stats.quota) parts.push(stats.quota + ' lần hết lượt');
-    if (stats.busy) parts.push('model đang quá tải');
-    return 'Không gọi được Gemini (' + parts.concat(stats.other.slice(-2)).join('; ') + ')';
+    if (stats.invalid) parts.push('API key không hợp lệ');
+    if (stats.quota) parts.push('đang giới hạn lượt dùng');
+    if (stats.busy) parts.push('máy chủ quá tải');
+    return 'Chưa nhận được kết quả (' + parts.concat(stats.other.slice(-2)).join('; ') + '). Câu đang viết vẫn được giữ, bạn có thể thử lại.';
 }
-async function geminiGenerateJson(prompt, schema, temperature) {
+async function geminiGenerateJson(prompt, schema, temperature, options) {
+    options = options || {};
+    const session = avgCardSession, started = Date.now();
+    geminiEnsureActive(session, options);
+    if (navigator.onLine === false) throw new Error('Thiết bị đang mất mạng. Hãy kết nối Internet rồi thử lại.');
     await avgLoadCardKeys();
+    geminiEnsureActive(session, options);
     const keys = getGeminiCardKeys();
     if (!keys.length) throw new Error(AVG_NO_KEY_MSG);
-    const MINUTE = 60000, HOUR = 60 * MINUTE, DAY = 24 * HOUR;
     const stats = { invalid: 0, quota: 0, busy: 0, other: [] };
-    const started = Date.now();
     let calls = 0;
-    outer:
-    for (const m of GEMINI_TEXT_MODELS) {
-        if ((geminiHealth().busy[m.model] || 0) > Date.now()) continue;
-        const generationConfig = { responseMimeType: 'application/json', responseSchema: schema, temperature: temperature };
-        if (m.thinking) generationConfig.thinkingConfig = m.thinking;
-        const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: generationConfig });
-        for (let n = 0; n < keys.length; n++) {
-            const idx = (geminiKeyStart + n) % keys.length, key = keys[idx], kid = geminiKeyId(key);
+    // Visit fallback models before spending all attempts on different keys for one model.
+    outer: for (let n = 0; n < keys.length; n++) {
+        const idx = (geminiKeyStart + n) % keys.length, key = keys[idx], kid = geminiKeyId(key);
+        modelLoop: for (const m of GEMINI_TEXT_MODELS) {
             const h = geminiHealth();
-            if ((h.dead[kid] || 0) > Date.now() || (h.block[m.model + '|' + kid] || 0) > Date.now()) continue;
-            if (++calls > GEMINI_MAX_CALLS || Date.now() - started > 45000) break outer;
-            const controller = new AbortController();
-            const timer = setTimeout(function() { controller.abort(); }, GEMINI_TEXT_TIMEOUT_MS);
-            try {
-                const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + m.model + ':generateContent?key=' + encodeURIComponent(key), {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, signal: controller.signal
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
-                    const text = parts.filter(function(p) { return !p.thought; }).map(function(p) { return p.text || ''; }).join('');
-                    if (!text) { stats.other.push(m.model + ': phản hồi trống'); continue; }
-                    geminiKeyStart = idx;
-                    console.log('[Gemini] ' + m.model + ' · key ' + (idx + 1) + ' · ' + (Date.now() - started) + 'ms');
-                    return spParseJson(text);
+            if ((h.dead[kid] || 0) > Date.now() || (h.busy[m.model] || 0) > Date.now()
+                || (h.block[m.model + '|' + kid] || 0) > Date.now()) continue;
+            const config = { responseMimeType: 'application/json', responseSchema: schema, maxOutputTokens: 6144 };
+            if (/^gemini-2\./.test(m.model)) config.temperature = temperature;
+            if (m.thinking) config.thinkingConfig = m.thinking;
+            const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: config });
+            for (let attempt = 0; attempt < 2; attempt++) {
+                geminiEnsureActive(session, options);
+                const remaining = GEMINI_TOTAL_TIMEOUT_MS - (Date.now() - started);
+                if (calls >= GEMINI_MAX_CALLS || remaining < 100) break outer;
+                calls++;
+                let retryMs = 800 * Math.pow(2, attempt) + Math.random() * 250;
+                try {
+                    const result = await geminiRequest('https://generativelanguage.googleapis.com/v1beta/models/' + m.model + ':generateContent?key=' + encodeURIComponent(key),
+                        body, Math.min(GEMINI_TEXT_TIMEOUT_MS, remaining), session, options);
+                    geminiEnsureActive(session, options);
+                    const res = result.response, data = result.data;
+                    if (res.ok) {
+                        if (!data) throw geminiError('InvalidResponseError', 'Phản hồi không phải JSON.');
+                        const candidate = data.candidates && data.candidates[0];
+                        if ((data.promptFeedback && data.promptFeedback.blockReason)
+                            || (candidate && /SAFETY|PROHIBITED|BLOCKLIST|RECITATION/.test(candidate.finishReason || ''))) {
+                            throw geminiError('ContentBlockedError', 'AI chưa thể xử lý nội dung này. Hãy đổi cách diễn đạt rồi thử lại.');
+                        }
+                        const parts = (candidate && candidate.content && candidate.content.parts) || [];
+                        const text = parts.filter(function(p) { return !p.thought; }).map(function(p) { return p.text || ''; }).join('');
+                        let parsed;
+                        try {
+                            parsed = spParseJson(text);
+                            geminiValidateJson(parsed, schema);
+                            if (options.validate) options.validate(parsed);
+                        } catch (e) { throw geminiError('InvalidResponseError', 'AI trả về dữ liệu chưa đầy đủ.'); }
+                        geminiKeyStart = idx;
+                        return parsed;
+                    }
+                    const err = await geminiReadError(res, data);
+                    console.warn('[Gemini] ' + m.model + ' · HTTP ' + err.status + ' · ' + err.reason);
+                    if ((err.status === 400 || err.status === 401) && /API_KEY|API key|UNAUTHENTICATED/i.test(err.reason + err.message)) {
+                        stats.invalid++;
+                        geminiMark('dead', kid, 86400000);
+                        continue modelLoop;
+                    }
+                    if (err.status === 429) {
+                        stats.quota++;
+                        if (/PerDay|daily|quota_exceeded/i.test(err.quota + ' ' + err.reason) || err.retryMs > 5000) {
+                            geminiMark('block', m.model + '|' + kid, Math.max(err.retryMs, /PerDay|daily/i.test(err.quota) ? 10800000 : 60000));
+                            continue modelLoop;
+                        }
+                        retryMs = Math.max(retryMs, err.retryMs);
+                        if (attempt) geminiMark('block', m.model + '|' + kid, 60000);
+                    } else if (err.status === 408 || err.status >= 500) {
+                        stats.busy++;
+                        if (attempt) geminiMark('busy', m.model, 30000);
+                    } else {
+                        stats.other.push(m.model + ': HTTP ' + err.status);
+                        if (err.status === 403 || err.status === 404) geminiMark('block', m.model + '|' + kid, 600000);
+                        continue modelLoop;
+                    }
+                } catch (e) {
+                    if (e.name === 'CancelledError' || e.name === 'ContentBlockedError') throw e;
+                    if (navigator.onLine === false) throw new Error('Kết nối mạng bị gián đoạn. Câu đang viết vẫn được giữ; hãy kết nối lại rồi thử.');
+                    if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+                        stats.other.push(m.model + ': kết nối quá thời gian chờ');
+                        continue modelLoop;
+                    }
+                    stats.other.push(e.name === 'InvalidResponseError' ? m.model + ': phản hồi chưa đầy đủ' : 'kết nối mạng gián đoạn');
                 }
-                const err = await geminiReadError(res);
-                console.warn('[Gemini] ' + m.model + ' · key ' + (idx + 1) + ' lỗi ' + err.status + ' ' + err.reason + ': ' + err.message.slice(0, 200));
-                if (err.status === 400 && /API_KEY/.test(err.reason + err.message)) {
-                    stats.invalid++;
-                    geminiMark('dead', kid, DAY);                         // key bị xoá/thu hồi
-                } else if (err.status === 429) {
-                    stats.quota++;
-                    geminiMark('block', m.model + '|' + kid, /PerDay/i.test(err.quota) ? 3 * HOUR : MINUTE);
-                } else if (err.status === 404 || err.status === 403) {
-                    stats.other.push(m.model + ': không dùng được với key ' + (idx + 1));
-                    geminiMark('block', m.model + '|' + kid, err.status === 404 ? 7 * DAY : DAY);
-                } else if (err.status >= 500) {
-                    stats.busy++;
-                    geminiMark('busy', m.model, 10 * MINUTE);             // model quá tải: sang model khác
-                    continue outer;
-                } else {
-                    stats.other.push(m.model + ': HTTP ' + err.status);   // tham số không hợp với model này
-                    continue outer;
-                }
-            } catch (e) {
-                if (e.name !== 'AbortError') throw new Error('Không kết nối được Gemini: ' + e.message + ' (kiểm tra mạng)');
-                stats.other.push(m.model + ': quá ' + (GEMINI_TEXT_TIMEOUT_MS / 1000) + ' giây');
-                continue outer;
-            } finally {
-                clearTimeout(timer);
+                if (attempt === 0 && calls < GEMINI_MAX_CALLS && Date.now() - started + retryMs < GEMINI_TOTAL_TIMEOUT_MS) {
+                    if (options.onRetry) options.onRetry();
+                    await geminiWait(retryMs, session, options);
+                } else break;
             }
         }
     }
+    geminiEnsureActive(session, options);
     throw new Error(geminiFailMessage(stats, calls));
 }
-
 /* ==================== LUYỆN CÂU THEO BẬC ==================== */
 // Lịch sử luyện (bậc, câu tốt nhất, lỗi hay mắc, thẻ cách dùng) lưu ở localStorage của từng máy,
 // và trên máy tính còn được ghi vào field UserSentence qua pycmd('sp_save:...') để đồng bộ AnkiWeb.
@@ -1684,6 +1862,88 @@ var SP_USAGE_SCHEMA = {
     },
     propertyOrdering: ['particles', 'collocations', 'structures', 'phrases']
 };
+// Một phần của câu khi tách theo công thức: ô (V, prep...), chữ điền vào ô đó, và lý do
+var SP_BREAKDOWN_ITEM = {
+    type: 'OBJECT',
+    properties: { slot: { type: 'STRING' }, text: { type: 'STRING' }, note_vi: { type: 'STRING' } },
+    required: ['slot', 'text']
+};
+// Ký hiệu trong công thức -> [tên tiếng Việt, giải thích cho người mới]. Viết sẵn, không tốn lượt AI.
+var SP_SLOT_NAMES = {
+    's': ['chủ ngữ', 'người hoặc vật làm hành động, thường đứng đầu câu'],
+    'v': ['động từ', 'từ chỉ hành động hoặc trạng thái, ví dụ: rely, meet, go'],
+    'o': ['tân ngữ', 'người hoặc vật nhận hành động, đứng sau động từ'],
+    'n': ['danh từ', 'tên người, vật, sự việc, ví dụ: market, project'],
+    'np': ['cụm danh từ', 'một nhóm từ có danh từ làm chính, ví dụ: the new project'],
+    'adj': ['tính từ', 'từ mô tả tính chất, thường đứng trước danh từ, ví dụ: key, important'],
+    'adv': ['trạng từ', 'bổ nghĩa cho động từ hoặc tính từ, hay có đuôi -ly, ví dụ: quickly'],
+    'prep': ['giới từ', 'từ nhỏ nối các phần trong câu: in, on, at, for, with, to...'],
+    'particle': ['tiểu từ', 'từ nhỏ đi sau động từ thành cụm động từ, ví dụ: up trong give up'],
+    'v-ing': ['động từ thêm -ing', 'ví dụ: working, meeting'],
+    'v3': ['quá khứ phân từ', 'động từ cột 3 hoặc thêm -ed, ví dụ: done, worked'],
+    'v2': ['động từ quá khứ', 'động từ cột 2 hoặc thêm -ed, ví dụ: went, worked'],
+    'v-ed': ['động từ thêm -ed', 'dạng quá khứ của động từ có quy tắc, ví dụ: worked'],
+    'to-v': ['to + động từ nguyên mẫu', 'ví dụ: to meet, to work'],
+    'clause': ['mệnh đề', 'một cụm có đủ chủ ngữ và động từ, ví dụ: we meet them'],
+    'sb': ['somebody', 'ai đó (chỗ điền người)'],
+    'sth': ['something', 'cái gì đó (chỗ điền vật, việc)'],
+    'time': ['mốc thời gian', 'ví dụ: 2020, last week'],
+    'a/the': ['mạo từ', 'a/an: một (chưa xác định); the: cái đã xác định'],
+    'a/an': ['mạo từ không xác định', 'nghĩa là "một", dùng khi nhắc lần đầu'],
+    'the': ['mạo từ xác định', 'dùng cho thứ người nghe đã biết hoặc đã nhắc tới'],
+    'be': ['động từ to be', 'am / is / are / was / were'],
+    'have/has': ['trợ động từ have/has', 'dùng ở thì hiện tại hoàn thành; has đi với he/she/it'],
+    'modal': ['động từ khuyết thiếu', 'can, should, must, will... + động từ nguyên mẫu'],
+    'det': ['từ hạn định', 'đứng trước danh từ: this, that, my, all, some...'],
+    'pron': ['đại từ', 'thay cho danh từ: I, you, he, it, they...']
+};
+// Ký hiệu công thức cho tiếng Trung: không có mạo từ, không chia thì, giới từ đứng TRƯỚC động từ
+var SP_SLOT_NAMES_ZH = {
+    's': ['chủ ngữ', 'người hoặc vật làm hành động, đứng đầu câu, ví dụ: 我, 他, 老师'],
+    'v': ['động từ', 'không chia thì như tiếng Anh, ví dụ: 吃, 学习, 解决'],
+    'o': ['tân ngữ', 'người hoặc vật nhận hành động, đứng sau động từ, ví dụ: 吃 苹果'],
+    'n': ['danh từ', 'ví dụ: 书, 问题, 公司'],
+    'np': ['cụm danh từ', 'nhóm từ có danh từ làm chính, ví dụ: 这本新书'],
+    'adj': ['tính từ', 'làm vị ngữ thì thường có 很 đứng trước, ví dụ: 他很忙'],
+    'adv': ['phó từ', 'đứng TRƯỚC động từ hoặc tính từ, ví dụ: 都, 也, 已经, 常常'],
+    'num': ['số từ', 'ví dụ: 一, 两, 三'],
+    'mw': ['lượng từ', 'đứng giữa số (hoặc 这/那) và danh từ, ví dụ: 一本书, 三个人'],
+    'comp': ['bổ ngữ', 'đứng ngay sau động từ, nói kết quả, hướng hoặc mức độ, ví dụ: 看完, 走进来, 说得很好'],
+    'asp': ['trợ từ động thái', '了: đã xong; 着: đang duy trì; 过: đã từng'],
+    'prep': ['giới từ', 'đứng TRƯỚC động từ chính (khác tiếng Việt), ví dụ: 在家吃饭, 给他打电话'],
+    'time': ['thời gian', 'đứng trước động từ, thường ngay sau chủ ngữ, ví dụ: 我明天去'],
+    'place': ['nơi chốn', 'thường đi với 在 và đứng trước động từ, ví dụ: 在公司工作'],
+    'modal': ['động từ năng nguyện', 'đứng trước động từ: 会, 能, 可以, 要, 想, 应该'],
+    'clause': ['mệnh đề', 'một cụm có đủ chủ ngữ và động từ, ví dụ: 我们开会'],
+    'sb': ['ai đó', 'chỗ điền người'],
+    'sth': ['cái gì đó', 'chỗ điền vật, việc'],
+    'det': ['từ chỉ định', 'đứng trước lượng từ: 这, 那, 每, 哪'],
+    'pron': ['đại từ', 'ví dụ: 我, 你, 他, 我们'],
+    '的': ['trợ từ 的 (de)', 'nối phần bổ nghĩa với danh từ: 我的书, 漂亮的衣服'],
+    '地': ['trợ từ 地 (de)', 'nối trạng ngữ với động từ: 认真地学习'],
+    '得': ['trợ từ 得 (de)', 'nối động từ với bổ ngữ mức độ: 跑得很快'],
+    '了': ['trợ từ 了 (le)', 'sau động từ: việc đã xong; cuối câu: tình huống đã thay đổi'],
+    '着': ['trợ từ 着 (zhe)', 'hành động hoặc trạng thái đang duy trì: 门开着'],
+    '过': ['trợ từ 过 (guo)', 'đã từng trải qua: 我去过中国'],
+    '把': ['câu chữ 把 (bǎ)', 'đưa tân ngữ lên trước động từ; sau động từ phải có thêm thành phần (了, bổ ngữ...): 把书放好'],
+    '被': ['câu bị động 被 (bèi)', 'chủ ngữ là bên chịu tác động: 杯子被他打破了'],
+    '比': ['so sánh 比 (bǐ)', 'A 比 B + tính từ; không thêm 很 trước tính từ: 他比我高'],
+    '是': ['động từ 是 (shì)', 'nối hai danh từ: 我是学生; không đặt trước tính từ'],
+    '是...的': ['cấu trúc 是…的 (shì…de)', 'nhấn mạnh thời gian, nơi chốn, cách thức của việc đã xảy ra: 我是坐飞机来的'],
+    '很': ['phó từ 很 (hěn)', 'thường đứng trước tính từ làm vị ngữ: 他很忙'],
+    '在': ['在 (zài)', 'ở/tại (trước nơi chốn) hoặc đang (trước động từ)'],
+    '不': ['phủ định 不 (bù)', 'phủ định hiện tại, tương lai, thói quen: 我不去'],
+    '没': ['phủ định 没 (méi)', 'phủ định việc đã xảy ra; dùng 没 thì bỏ 了: 我没去'],
+    '没有': ['phủ định 没有 (méiyǒu)', 'phủ định việc đã xảy ra hoặc "không có"'],
+    '会': ['会 (huì)', 'biết làm (kỹ năng học được) hoặc sẽ'],
+    '能': ['能 (néng)', 'có thể (đủ khả năng hoặc điều kiện)'],
+    '要': ['要 (yào)', 'muốn, cần, sắp'],
+    '想': ['想 (xiǎng)', 'muốn, nghĩ']
+};
+var SP_CATEGORY_NAMES_ZH = {
+    particle: 'Trợ từ / lượng từ / bổ ngữ', collocation: 'Từ đi kèm (搭配)',
+    phrase: 'Thành ngữ / cụm cố định', spelling: 'Sai chữ Hán / pinyin'
+};
 var SP_TASK_SCHEMA = {
     type: 'OBJECT',
     properties: {
@@ -1691,14 +1951,17 @@ var SP_TASK_SCHEMA = {
         phrase_vi: { type: 'STRING' },
         focus: { type: 'STRING' },
         focus_hint_vi: { type: 'STRING' },
+        structure: { type: 'STRING' },
+        structure_vi: { type: 'STRING' },
         must_use: { type: 'ARRAY', items: { type: 'STRING' } },
         reference_answers: { type: 'ARRAY', items: { type: 'STRING' } },
         reference_pinyin: { type: 'STRING' },
+        structure_breakdown: { type: 'ARRAY', items: SP_BREAKDOWN_ITEM },
         usage_card: SP_USAGE_SCHEMA,
         mnemonic_vi: { type: 'STRING' }
     },
-    required: ['task_vi', 'focus', 'focus_hint_vi', 'must_use', 'reference_answers'],
-    propertyOrdering: ['phrase_vi', 'task_vi', 'focus', 'focus_hint_vi', 'must_use', 'reference_answers', 'reference_pinyin', 'usage_card', 'mnemonic_vi']
+    required: ['task_vi', 'focus', 'focus_hint_vi', 'structure', 'must_use', 'reference_answers'],
+    propertyOrdering: ['phrase_vi', 'task_vi', 'focus', 'focus_hint_vi', 'structure', 'structure_vi', 'must_use', 'reference_answers', 'reference_pinyin', 'structure_breakdown', 'usage_card', 'mnemonic_vi']
 };
 var SP_GRADE_SCHEMA = {
     type: 'OBJECT',
@@ -1724,11 +1987,14 @@ var SP_GRADE_SCHEMA = {
         model_pinyin: { type: 'STRING' },
         explain_vi: { type: 'STRING' },
         upgrade_vi: { type: 'STRING' },
+        structure: { type: 'STRING' },
+        structure_breakdown: { type: 'ARRAY', items: SP_BREAKDOWN_ITEM },
+        structure_explain_vi: { type: 'STRING' },
         usage_card: SP_USAGE_SCHEMA,
         mnemonic_vi: { type: 'STRING' }
     },
     required: ['issues', 'pass', 'summary_vi', 'corrected', 'model_answer', 'explain_vi'],
-    propertyOrdering: ['issues', 'pass', 'summary_vi', 'corrected', 'corrected_pinyin', 'model_answer', 'model_pinyin', 'explain_vi', 'upgrade_vi', 'usage_card', 'mnemonic_vi']
+    propertyOrdering: ['issues', 'pass', 'summary_vi', 'corrected', 'corrected_pinyin', 'model_answer', 'model_pinyin', 'explain_vi', 'upgrade_vi', 'structure', 'structure_breakdown', 'structure_explain_vi', 'usage_card', 'mnemonic_vi']
 };
 
 var spState = null;
@@ -1749,13 +2015,20 @@ function spText(selector) {
 function spJson(selector) {
     try { const t = spText(selector); return t ? JSON.parse(t) : null; } catch (e) { return null; }
 }
+var spMemoryStore = window.__avgMemoryStore || (window.__avgMemoryStore = {});
 function spStoreGet(key) {
-    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch (e) { return null; }
+    let value = spMemoryStore[key];
+    if (value == null) { try { value = localStorage.getItem(key); } catch (e) { /* use session memory */ } }
+    try { return value ? JSON.parse(value) : null; } catch (e) { return null; }
 }
 function spStoreSet(key, value) {
-    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* hết chỗ hoặc bị chặn: bỏ qua */ }
+    try {
+        const text = JSON.stringify(value);
+        spMemoryStore[key] = text;
+        localStorage.setItem(key, text);
+    } catch (e) { /* keep the in-memory copy when storage is unavailable */ }
 }
-function spIsCurrent(token) { return !!(spState && spState.token === token && spEl('sp-input')); }
+function spIsCurrent(token) { return !!(spState && spState.token === token && spState.root === spEl('sp-container') && spState.input === spEl('sp-input')); }
 function spSayBtn(text) {
     return text ? `<button type="button" class="tts-btn-small" data-sp-say="${spEsc(text)}" title="Nghe">🔊</button>` : '';
 }
@@ -1912,9 +2185,12 @@ function spLevelGuide(level) {
     }
     if (level === 2) {
         return 'LEVEL 2: SENTENCE. Give exactly ONE natural Vietnamese sentence (8–16 words, never two sentences) for the learner to express in ' + lang + '. Solving it must require the target word with a correct grammar pattern or collocation (its verb pattern, '
-            + (zh ? 'aspect particle, complement, measure word, word order' : 'tense, preposition, article, word order') + ').';
+            + (zh ? 'aspect particle 了/着/过, complement, measure word, word order with time and place BEFORE the verb, or a 把/被/比 pattern' : 'tense, preposition, article, word order') + ').';
     }
-    return 'LEVEL 3: SITUATION. Describe a short real-life situation in Vietnamese (1–2 sentences) and ask the learner to write 1–2 ' + lang + ' sentences responding to it. The answer must use the target word PLUS exactly one extra required element related to the word (a phrasal verb, idiom, fixed phrase or grammar structure), listed in "must_use" together with the target word.';
+    return 'LEVEL 3: SITUATION. Describe a short real-life situation in Vietnamese (1–2 sentences) and ask the learner to write 1–2 ' + lang + ' sentences responding to it. The answer must use the target word PLUS exactly one extra required element related to the word ('
+        + (zh ? 'a complement, a fixed pattern such as 越…越…, 一…就…, 虽然…但是…, 因为…所以…, or a common 成语 / set phrase; never an English-style phrasal verb'
+              : 'a phrasal verb, idiom, fixed phrase or grammar structure')
+        + '), listed in "must_use" together with the target word.';
 }
 function spMistakeContext() {
     const st = spState;
@@ -1932,10 +2208,26 @@ function spMistakeContext() {
 function spUsageInstruction() {
     const zh = spState.lang === 'zh';
     return [
-        '- ALSO fill "usage_card": a compact cheat-sheet of how the target word is used, only items that contain the target word or directly go with it. Each item has "form" (the pattern' + (zh ? ', with pinyin in brackets' : '') + '), "note_vi" (short Vietnamese meaning or note) and an optional short "example".',
-        '  "particles": ' + (zh ? 'particles / measure words / complements that go with it' : 'dependent prepositions / particles that go with it') + ' (max 4); "collocations": the most common collocations (max 5); "structures": key grammar patterns (max 3); "phrases": phrasal verbs, idioms or fixed phrases containing it (max 4). Use an empty array when nothing fits.',
-        '- ALSO fill "mnemonic_vi": ONE short, vivid Vietnamese memory trick (max 40 words) linking the word\'s sound/shape/meaning with its key partner word.'
+        '- ALSO fill "usage_card": a compact cheat-sheet of how the target word is used, only items that contain the target word or directly go with it. Each item has "form" (the pattern' + (zh ? ', Hanzi with pinyin in brackets' : '') + '), "note_vi" (short Vietnamese meaning or note) and an optional short "example"' + (zh ? ' (Hanzi only)' : '') + '.',
+        zh ? '  "particles": the measure word(s) 量词 it takes, aspect particles 了/着/过, complements 补语 and coverbs (在/给/跟/对/从...) that go with it (max 4); "collocations": the most common 搭配 such as verb–object or adjective–noun pairs (max 5); "structures": key Chinese sentence patterns with it, written with Chinese slot labels (S, V, O, MW, Comp, Prep...), never English patterns (max 3); "phrases": 成语, 惯用语 or fixed expressions containing it (max 4). Use an empty array when nothing fits.'
+           : '  "particles": dependent prepositions / particles that go with it (max 4); "collocations": the most common collocations (max 5); "structures": key grammar patterns (max 3); "phrases": phrasal verbs, idioms or fixed phrases containing it (max 4). Use an empty array when nothing fits.',
+        zh ? '- ALSO fill "mnemonic_vi": ONE short, vivid Vietnamese memory trick (max 40 words) for the word, using the Hán Việt reading of its characters, their radicals or shape, and its key partner word.'
+           : '- ALSO fill "mnemonic_vi": ONE short, vivid Vietnamese memory trick (max 40 words) linking the word\'s sound/shape/meaning with its key partner word.'
     ].join('\n');
+}
+// Luật viết công thức cho tiếng Trung (dùng chung cho ra đề và chấm), tránh AI chép công thức tiếng Anh
+var SP_ZH_SLOT_RULE = 'This is CHINESE, not English: write a Chinese sentence pattern, never an English one.'
+    + ' Use only these slot labels: S, V, O, N, NP, Adj, Adv, Num, MW (measure word 量词), Comp (complement 补语), Asp (aspect particle 了/着/过), Prep (coverb/preposition such as 在/给/跟/对/从), Time, Place, Modal, sb, sth, clause.'
+    + ' Write Chinese function words literally in Hanzi with pinyin in brackets, e.g. "把(bǎ)", "的(de)", "比(bǐ)".'
+    + ' FORBIDDEN (English grammar that Chinese does not have): a/the, to-V, V-ing, V3, V2, have/has, be, will, "prep + N" placed after the verb. Chinese has no articles and no tense endings, and Time, Place and Prep phrases go BEFORE the verb.';
+function spZhStructureRule(level) {
+    const ex = level === 1 ? 'Level 1: the pattern of the PHRASE, e.g. "V + Asp + Num + MW + N", "V + Comp + O", "Adj + 的(de) + N", "Prep + sb + V".'
+        : level === 2 ? 'Level 2: the pattern of the WHOLE SENTENCE, e.g. "S + Time + 在(zài) + Place + V + O", "S + 把(bǎ) + O + V + Comp", "A + 比(bǐ) + B + Adj", "S + 是(shì) + Time + V + 的(de)".'
+        : 'Level 3: the pattern of the sentence that uses the target word together with the extra required element, e.g. "S + 一边(yìbiān) + V1 + 一边(yìbiān) + V2", "虽然(suīrán) + clause + 但是(dànshì) + clause".';
+    return ex + ' ' + SP_ZH_SLOT_RULE
+        + ' Keep it short (3–6 slots) and built around the grammar point this task trains (aspect, complement, measure word, word order, 把/被/比), not one slot per word.'
+        + ' Only the target word and grammar function words (的, 地, 得, 是, 很, 把, 被, 比, 在, 不, 没) may be written literally; every other word of the answer, especially the word that collocates with the target word, must stay a slot label so the formula never gives the answer away.'
+        + ' NEVER write the particle, measure word, complement or coverb the learner has to find by themselves: put "Asp", "MW", "Comp" or "Prep" there instead.';
 }
 function spBuildTaskPrompt(level, needUsage) {
     const st = spState, zh = st.lang === 'zh';
@@ -1955,6 +2247,19 @@ function spBuildTaskPrompt(level, needUsage) {
         '- "phrase_vi": at level 1 the exact short Vietnamese phrase to translate (3–8 words, must appear word-for-word inside "task_vi" if task_vi is a sentence); at level 2–3 an empty string.',
         '- "focus": one of particle, collocation, grammar, phrase, what this task trains.',
         '- "focus_hint_vi": one short Vietnamese hint pointing to what to pay attention to, WITHOUT giving the answer.',
+        '- "structure": the pattern the answer should follow, as a short formula of slots joined by " + ", with the target word written in its slot. '
+            + (zh ? spZhStructureRule(level)
+               : (level === 1 ? 'Level 1: the pattern of the PHRASE, e.g. "a/the + Adj + N", "V + O + prep + N", "be + Adj + prep + V-ing".'
+               : level === 2 ? 'Level 2: the pattern of the WHOLE SENTENCE including tense, e.g. "S + have/has + V3 + O + since + time", "S + V + O + to-V", "It + be + Adj + for sb + to-V".'
+               : 'Level 3: the pattern of the sentence that uses the target word together with the extra required element, e.g. "S + look forward to + V-ing".')
+                 + ' Use slot labels S, V, O, N, Adj, Adv, V-ing, V3, to-V, prep, clause, sb, sth.'
+                 + ' Keep it short (3–6 slots) and built around the grammar point this task trains (tense, verb pattern, collocation), not one slot per word.'
+                 + ' Only the target word and grammar function words (a/the, to, have/has, need to, be, it, there) may be written literally; every other word of the answer, especially the word that collocates with the target word, must stay a slot label (Adj, V, N...) so the formula never gives the answer away.'
+                 + ' NEVER write the preposition/particle the learner has to find by themselves: put the slot label "prep"/"particle" there instead.'),
+        '- "structure_vi": max 20 Vietnamese words naming the pattern and what each unusual slot means, without giving the answer, e.g. '
+            + (zh ? '"Câu chữ 把: đưa tân ngữ lên trước động từ, sau động từ cần bổ ngữ".' : '"Cụm danh từ: mạo từ + tính từ đứng trước danh từ".'),
+        '- "structure_breakdown": the FIRST reference answer split into the slots of "structure", in order, one part per slot; the parts joined must give back that answer (it stays hidden until the learner finishes). "slot": the slot label exactly as in the formula; "text": the exact words filling it' + (zh ? ' (Hanzi only)' : '') + '; "note_vi": max 12 Vietnamese words for a beginner who knows no grammar terms, saying WHY this word/form goes there (e.g. '
+            + (zh ? '"书 luôn dùng lượng từ 本", "了 sau động từ: việc đã làm xong"' : '"rely luôn đi với giới từ on"') + ').',
         '- "must_use": the words the answer must contain: always the target word; at level 3 also the one extra element. Never list the preposition/particle the learner has to find by themselves.',
         '- "reference_answers": 1–3 natural, correct answers.' + (zh ? ' Hanzi only, no pinyin; put the pinyin of the first answer in "reference_pinyin".' : ''),
         '- Use the meaning shown on the card. Make it natural and useful in real life.'
@@ -1967,7 +2272,8 @@ function spBuildGradePrompt(answer, attempt, needUsage) {
     const st = spState, zh = st.lang === 'zh', t = st.task;
     const expected = { 1: 'a short phrase (a full sentence containing the correct phrase is also fine)', 2: 'one sentence', 3: '1–2 sentences responding to the situation' };
     const parts = [
-        'You are a strict but encouraging ' + spLangName() + ' teacher grading a Vietnamese learner. Explain in simple Vietnamese, without linguistic jargon.',
+        'You are a strict but encouraging ' + spLangName() + ' teacher grading a Vietnamese learner. Explain in simple Vietnamese, without linguistic jargon.'
+            + (zh ? ' When it helps, use the Hán Việt reading of a word to explain it.' : ''),
         '',
         spCardContext(),
         ''
@@ -1980,6 +2286,7 @@ function spBuildGradePrompt(answer, attempt, needUsage) {
             'TASK GIVEN (Vietnamese): ' + JSON.stringify(t.task_vi),
             t.phrase_vi ? 'PHRASE TO TRANSLATE (only this part is required): ' + JSON.stringify(t.phrase_vi) : '',
             'MUST USE: ' + JSON.stringify(t.must_use),
+            t.structure ? 'STRUCTURE SUGGESTED TO THE LEARNER (a hint only; another correct structure is fine): ' + JSON.stringify(t.structure) : '',
             'REFERENCE ANSWERS (for you only; other correct answers are fine): ' + JSON.stringify(t.reference_answers)
         );
     }
@@ -1987,7 +2294,10 @@ function spBuildGradePrompt(answer, attempt, needUsage) {
         'LEARNER ANSWER: ' + JSON.stringify(answer),
         'ATTEMPT: ' + attempt + ' of ' + SP_MAX_ATTEMPTS,
         '',
-        'CHECK in this order: (1) the target word has the right meaning and form; (2) prepositions/particles that go with it; (3) collocations and word choice; (4) grammar (tense/aspect, word order, articles, sentence structure); (5) phrasal verbs, idioms, fixed phrases if used or required; (6) the answer does what was asked' + (st.mode === 'free' ? '' : ' and keeps the meaning of the task') + '.',
+        (zh ? 'CHECK in this order: (1) the target word has the right meaning and the right characters; (2) the measure word, aspect particles 了/着/过, 的/地/得, complements and coverbs (在/给/跟/对...) that go with it; (3) 搭配 (collocations) and word choice; (4) grammar: word order (S + Time + Place/Prep + V + O), 把/被/比 patterns, negation 不 vs 没, 很 before adjectives; (5) fixed patterns or 成语 if used or required; (6) the answer does what was asked'
+            : 'CHECK in this order: (1) the target word has the right meaning and form; (2) prepositions/particles that go with it; (3) collocations and word choice; (4) grammar (tense/aspect, word order, articles, sentence structure); (5) phrasal verbs, idioms, fixed phrases if used or required; (6) the answer does what was asked')
+            + (st.mode === 'free' ? '' : ' and keeps the meaning of the task') + '.',
+        zh ? 'CHINESE INPUT: the learner may type pinyin (with or without tone marks) when they have no Chinese keyboard. Grade the language itself; do not fail an answer only because it is in pinyin, but add one "suggestion" with category "spelling" giving the Hanzi. A wrong character (e.g. 在/再, 的/得 mixed up) is a "spelling" error. Never count spaces or half-width vs full-width punctuation (, vs ，) as mistakes.' : '',
         'RULES:',
         '- "issues": every real problem, max 4. "severity": "error" for anything wrong or unnatural to a native speaker; "suggestion" only for an optional improvement of an already correct answer.',
         '  "category": one of particle, collocation, grammar, phrase, word_choice, spelling, task. Use "task" only when the meaning does not match the task or a required word is missing, never for answer length or format.',
@@ -1995,17 +2305,29 @@ function spBuildGradePrompt(answer, attempt, needUsage) {
         '  "hint_vi": a Vietnamese hint that helps the learner fix it by themselves WITHOUT giving the corrected words.',
         '  "fix": the corrected words. "explain_vi": 1–2 short Vietnamese sentences on why.',
         '  "tag": a short stable lowercase key for this kind of mistake, e.g. "prep:interested-in", "particle:le-completion", "colloc:make-decision", "grammar:present-perfect".',
-        '  "label_vi": a short Vietnamese label for the learner\'s mistake list, e.g. "Sai giới từ: interested ON → IN".',
+        '  "label_vi": a short Vietnamese label for the learner\'s mistake list, e.g. ' + (zh ? '"Thiếu lượng từ: 一书 → 一本书".' : '"Sai giới từ: interested ON → IN".'),
         '- "pass": true only when there is no issue with severity "error".',
         '- "summary_vi": one short Vietnamese sentence with the verdict. If the answer is not correct, do NOT reveal the corrected words.',
         '- "corrected": the learner answer with minimal corrections (keep their idea); the same as the answer if it is already correct.',
         '- "model_answer": one natural, idiomatic answer' + (zh ? ' (Hanzi only); put its pinyin in "model_pinyin" and the pinyin of "corrected" in "corrected_pinyin".' : '.'),
         '- "explain_vi": max 80 words in Vietnamese on the key usage points of the target word shown by this answer.',
-        '- "upgrade_vi": if pass, one tip to sound more natural or advanced; otherwise an empty string.'
+        '- "upgrade_vi": if pass, one tip to sound more natural or advanced; otherwise an empty string.',
+        zh ? '- "structure": the formula of the Chinese structure used by the correct sentence ("corrected" if pass, otherwise "model_answer"), slots joined by " + ", 3–7 slots built around the key grammar point, with fixed function words written literally, e.g. "S + Time + 在(zài) + Place + V + O", "S + V + 得(de) + Adj", "S + 把(bǎ) + O + V + Comp", "Num + MW + N". ' + SP_ZH_SLOT_RULE
+           : '- "structure": the formula of the structure used by the correct sentence ("corrected" if pass, otherwise "model_answer"), slots joined by " + ", 3–7 slots built around the key grammar point, with fixed words written literally, e.g. "a/the + Adj + N", "S + have/has + V3 + O", "S + need to + V + prep + N".',
+        zh ? '- "structure_breakdown": that same correct sentence split into the parts of the formula, in order, one part per slot; the parts joined must give back the sentence. "slot": the slot label exactly as in the formula; "text": the exact Hanzi filling it; "note_vi": max 12 Vietnamese words for a beginner who knows no grammar terms, on WHY this word/form goes there (e.g. "thời gian đứng trước động từ", "书 dùng lượng từ 本", "得 nối động từ với mức độ"); never just the slot name like "Chủ ngữ".'
+           : '- "structure_breakdown": that same correct sentence split into the parts of the formula, in order, one part per slot; the parts joined must give back the sentence (a verb phrase like "need to listen" is split as "need to" + "listen", never glued to its object). "slot": the slot label exactly as in the formula; "text": the exact words filling it; "note_vi": max 12 Vietnamese words for a beginner who knows no grammar terms, on WHY this word/form goes there (form, position or meaning, e.g. "tính từ đứng trước danh từ", "chủ ngữ số ít nên dùng has", "listen luôn đi với giới từ to"); never just the slot name like "Chủ ngữ".',
+        '- "structure_explain_vi": max 60 words in simple Vietnamese: when to use this structure, and one mistake Vietnamese learners often make with it'
+            + (zh ? ' (e.g. putting time, place or a coverb phrase after the verb like in Vietnamese, or forgetting the measure word)' : '')
+            + (st.mode === 'free' ? '.' : ' (if the learner used a different correct structure, say both are fine).')
     );
     if (needUsage) parts.push(spUsageInstruction());
     parts.push('Return JSON only.');
     return parts.join('\n');
+}
+function spNormalizeBreakdown(list) {
+    return (Array.isArray(list) ? list : []).filter(function(p) { return p && p.text; }).slice(0, 8).map(function(p) {
+        return { slot: String(p.slot || '').trim(), text: String(p.text), note_vi: String(p.note_vi || '') };
+    });
 }
 function spNormalizeGrade(d) {
     if (!d || typeof d !== 'object') throw new Error('AI trả về dữ liệu không hợp lệ');
@@ -2029,6 +2351,9 @@ function spNormalizeGrade(d) {
         summary_vi: str(d.summary_vi), corrected: str(d.corrected), corrected_pinyin: str(d.corrected_pinyin),
         model_answer: str(d.model_answer), model_pinyin: str(d.model_pinyin),
         explain_vi: str(d.explain_vi), upgrade_vi: str(d.upgrade_vi),
+        structure: str(d.structure).trim(),
+        structure_breakdown: spNormalizeBreakdown(d.structure_breakdown),
+        structure_explain_vi: str(d.structure_explain_vi),
         raw: d
     };
 }
@@ -2038,9 +2363,30 @@ function spDefaultLevel(log) {
     for (let l = 1; l <= log.unlocked; l++) if (!log.passed[l - 1]) return l;
     return log.unlocked;
 }
+function spSaveDraft() {
+    const st = spState;
+    if (!st || !spIsCurrent(st.token)) return;
+    spStoreSet(st.draftKey, { v: 1, mode: st.mode, task: st.task, answer: st.input.value,
+        attempts: st.attempts, finished: st.finished, lastGrade: st.lastGrade, taskTags: st.taskTags, at: Date.now() });
+}
+function spRestoreDraft(st) {
+    const d = spStoreGet(st.draftKey);
+    if (!d || d.v !== 1 || Date.now() - d.at > 86400000 || !SP_LEVELS[String(d.mode)]
+        || (d.mode !== 'free' && d.mode > st.log.unlocked)) return;
+    if (d.task && (typeof d.task.task_vi !== 'string' || !Array.isArray(d.task.reference_answers)
+        || !d.task.reference_answers.length || !Array.isArray(d.task.must_use))) return;
+    st.mode = d.mode;
+    st.task = d.task || null;
+    st.input.value = typeof d.answer === 'string' ? d.answer : '';
+    st.attempts = Math.max(0, Math.min(SP_MAX_ATTEMPTS, Number(d.attempts) || 0));
+    st.finished = !!d.finished;
+    st.lastGrade = d.lastGrade && Array.isArray(d.lastGrade.issues) ? d.lastGrade : null;
+    st.taskTags = d.taskTags && typeof d.taskTags === 'object' ? d.taskTags : {};
+}
 function spInit() {
-    const input = spEl('sp-input');
-    if (!input) return;
+    const input = spEl('sp-input'), root = spEl('sp-container');
+    if (!input || !root) return;
+    if (spState && spState.root === root && spState.input === input) return;
     const word = spText('.word');
     if (!word) return;
     const fieldLog = spJson('#user-sentence-data');
@@ -2048,14 +2394,17 @@ function spInit() {
     const log = spMergeLogs(fieldLog && fieldLog.v ? fieldLog : null, spStoreGet(storeKey));
     spState = {
         token: Math.random().toString(36).slice(2), word: word, lang: /[㐀-鿿]/.test(word) ? 'zh' : 'en',
-        storeKey: storeKey, log: log, mode: spDefaultLevel(log),
+        root: root, input: input, draftKey: 'sp_draft_v1::' + word.toLowerCase() + '::' + spText('.definition-vi'),
+        storeKey: storeKey, log: log, mode: spDefaultLevel(log), error: '', request: null,
         task: null, attempts: 0, finished: false, lastGrade: null, taskTags: {}, busy: false
     };
+    spRestoreDraft(spState);
     input.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); spCheck(); }
     });
+    input.addEventListener('input', spSaveDraft);
     input.addEventListener('focus', spOnInputFocus);
-    spEl('sp-container').addEventListener('click', function(e) {
+    root.addEventListener('click', function(e) {
         const btn = e.target.closest('[data-sp-say]');
         if (btn) speakTextWithEdge(btn.getAttribute('data-sp-say'), e);
     });
@@ -2063,17 +2412,60 @@ function spInit() {
     spRenderMemory();
     spRenderTask();
     spUpdateButtons();
+    if (spState.lastGrade || spState.finished) spRenderResult({ gaveUp: !spState.lastGrade });
+}
+function spStartRequest(kind, token) {
+    const request = { kind: kind, startedAt: Date.now(), cancelled: false,
+        isCurrent: function() { return spIsCurrent(token); },
+        onRetry: function() {
+            if (spIsCurrent(token)) spSetBusy(true, 'Kết nối chưa ổn định, đang thử lại...');
+        }
+    };
+    spState.request = request;
+    return request;
+}
+function spCancelRequest(message) {
+    const st = spState;
+    if (!st || !st.busy) return;
+    spSaveDraft();
+    if (st.request) {
+        st.request.cancelled = true;
+        if (st.request.cancel) st.request.cancel();
+    }
+    // Invalidate the operation even if AbortController is unavailable on the device.
+    st.token = Math.random().toString(36).slice(2);
+    st.request = null;
+    st.error = message || 'Đã dừng yêu cầu. Câu đang viết vẫn được giữ; bạn có thể thử lại.';
+    spSetBusy(false);
+}
+function spSetBusy(busy, text) {
+    const st = spState, box = spEl('sp-status');
+    if (!st || !box) return;
+    st.busy = busy;
+    if (busy) {
+        st.error = '';
+        box.innerHTML = '<span class="sp-spinner"></span><span>' + spEsc(text || 'Đang xử lý...') + '</span>'
+            + '<button type="button" class="sp-btn tappable sp-btn-cancel" onclick="spCancelRequest()">Dừng</button>';
+        box.style.display = 'flex';
+    } else if (st.error) {
+        box.textContent = st.error;
+        box.style.display = 'flex';
+    } else {
+        box.style.display = 'none';
+        box.innerHTML = '';
+    }
+    spUpdateButtons();
 }
 function spRenderLevels() {
     const st = spState;
     let html = '';
     [1, 2, 3].forEach(function(l) {
         const locked = l > st.log.unlocked, passed = st.log.passed[l - 1];
-        html += '<button type="button" class="sp-level' + (st.mode === l ? ' active' : '') + (locked ? ' locked' : '') + '"'
+        html += '<button type="button" class="sp-level tappable' + (st.mode === l ? ' active' : '') + (locked ? ' locked' : '') + '"'
             + (locked ? ' disabled title="Đạt bậc trước để mở"' : '') + ' onclick="spSetMode(' + l + ')">'
             + (passed ? '✅' : locked ? '🔒' : '⭐') + ' ' + SP_LEVELS[l].name + '<small>' + SP_LEVELS[l].short + '</small></button>';
     });
-    html += '<button type="button" class="sp-level' + (st.mode === 'free' ? ' active' : '') + '" onclick="spSetMode(\'free\')">✍️ '
+    html += '<button type="button" class="sp-level tappable' + (st.mode === 'free' ? ' active' : '') + '" onclick="spSetMode(\'free\')">✍️ '
         + SP_LEVELS.free.name + '<small>' + SP_LEVELS.free.short + '</small></button>';
     spEl('sp-levels').innerHTML = html;
 }
@@ -2084,7 +2476,7 @@ function spRenderMemory() {
     if (!best && !mistakes.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
     let html = '';
     if (best) {
-        html += '<div class="sp-mem-label">🏆 Câu tốt nhất của bạn (' + SP_LEVELS[best.level].name + ')</div>'
+        html += '<div class="sp-mem-label">🏆 Câu tốt nhất của bạn (' + (SP_LEVELS[best.level] || SP_LEVELS.free).name + ')</div>'
             + '<div class="sp-mem-text">' + spEsc(best.text) + ' ' + spSayBtn(best.text) + '</div>';
     }
     if (mistakes.length) {
@@ -2101,7 +2493,8 @@ function spRenderTask() {
     // chạm vào ô lúc chưa có đề / đã xong sẽ tự ra đề tiếp (xem spOnInputFocus)
     input.placeholder = st.finished
         ? (st.mode === 'free' ? 'Chạm để viết câu khác...' : 'Chạm để làm đề tiếp theo...')
-        : (st.mode !== 'free' && !st.task ? 'Chạm vào đây để AI ra đề, rồi viết câu trả lời...' : 'Viết câu trả lời của bạn ở đây...');
+        : (st.mode !== 'free' && !st.task ? 'Chạm vào đây để AI ra đề, rồi viết câu trả lời...'
+            : st.lang === 'zh' ? 'Viết bằng chữ Hán (chưa có bộ gõ thì gõ pinyin cũng được)...' : 'Viết câu trả lời của bạn ở đây...');
     if (st.mode === 'free') {
         box.innerHTML = '<div class="sp-task-label">✍️ Tự do</div><div class="sp-task-text">Tự đặt một câu bất kỳ có dùng "<b>'
             + spEsc(st.word) + '</b>". Câu và lỗi vẫn được lưu nhưng không tính lên bậc.</div>';
@@ -2117,6 +2510,8 @@ function spRenderTask() {
     box.innerHTML = '<div class="sp-task-label">' + label + ' · ' + progress + '</div>'
         + spTaskTextHtml(t)
         + (t.focus_hint_vi ? '<div class="sp-task-hint">💡 ' + spFmt(t.focus_hint_vi) + '</div>' : '')
+        + (t.structure ? '<div class="sp-structure"><div class="sp-structure-label">🧩 Cấu trúc gợi ý</div><div class="sp-structure-pattern">'
+            + spEsc(t.structure) + '</div>' + (t.structure_vi ? '<div>' + spFmt(t.structure_vi) + '</div>' : '') + spLegendHtml(t.structure) + '</div>' : '')
         + (t.must_use.length ? '<div class="sp-task-must">Phải dùng: ' + t.must_use.map(function(w) { return '<code>' + spEsc(w) + '</code>'; }).join(' ') + '</div>' : '');
 }
 // Bậc 1: hiện rõ CỤM cần dịch; câu dài (nếu có) chỉ là ngữ cảnh, tô màu đúng cụm đó trong câu
@@ -2151,7 +2546,7 @@ function spOnInputFocus() {
     setTimeout(function() {
         try {
             const visibleBottom = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-            if (input.getBoundingClientRect().bottom > visibleBottom) input.scrollIntoView({ block: 'center' });
+            if (input === spEl('sp-input') && input.getBoundingClientRect().bottom > visibleBottom) input.scrollIntoView({ block: 'center' });
         } catch (e) { /* trình duyệt cũ */ }
     }, 400);
     if (st.busy) return;
@@ -2173,20 +2568,8 @@ function spUpdateButtons() {
     const canReveal = !st.finished && ((st.task && st.task.reference_answers.length) || st.lastGrade);
     btnReveal.disabled = st.busy || !canReveal;
 }
-function spSetBusy(busy, text) {
-    const st = spState, box = spEl('sp-status');
-    st.busy = busy;
-    if (busy) {
-        box.innerHTML = '<span class="sp-spinner"></span><span>' + spEsc(text || 'Đang xử lý...') + '</span>';
-        box.style.display = 'flex';
-    } else {
-        box.style.display = 'none';
-        box.innerHTML = '';
-    }
-    spUpdateButtons();
-}
 function spIssueHtml(i, revealed) {
-    const cat = SP_CATEGORY_NAMES[i.category] || i.category || 'Lỗi';
+    const cat = (spState && spState.lang === 'zh' && SP_CATEGORY_NAMES_ZH[i.category]) || SP_CATEGORY_NAMES[i.category] || i.category || 'Lỗi';
     let excerpt = '';
     if (i.excerpt) excerpt = '“' + spEsc(i.excerpt) + '”' + (revealed && i.fix ? ' → <b>' + spEsc(i.fix) + '</b>' : '');
     else if (revealed && i.fix) excerpt = '→ <b>' + spEsc(i.fix) + '</b>';
@@ -2211,6 +2594,62 @@ function spAnswersHtml(g, t) {
     }
     return html;
 }
+// Tên tiếng Việt của một ô trong công thức ("V" -> động từ), '' nếu là chữ thường (need to, it...)
+function spSlotInfo(slot) {
+    // Bỏ pinyin trong ngoặc ("把(bǎ)" -> "把"), kể cả ngoặc toàn khổ（）
+    const key = String(slot || '').trim().toLowerCase().replace(/[(（][^)）]*[)）]/g, '').trim();
+    const names = spState && spState.lang === 'zh' ? SP_SLOT_NAMES_ZH : SP_SLOT_NAMES;
+    if (names[key]) return names[key];
+    // "V1", "V2" (一边 V1 一边 V2) -> giải thích như "V"; giữ nguyên v2/v3 của tiếng Anh vì đã có ở trên
+    const bare = key.replace(/\d+$/, '');
+    if (bare !== key && names[bare]) return names[bare];
+    if (spState && key && key.indexOf(spState.word.toLowerCase()) >= 0) return ['từ bạn đang học', 'giữ đúng nghĩa trên thẻ'];
+    return null;
+}
+// Bảng "Ký hiệu" dưới công thức: chỉ giải thích những ký hiệu có trong công thức, theo thứ tự xuất hiện
+function spLegendHtml(formula) {
+    const seen = {}, rows = [];
+    String(formula || '').split(/\s*\+\s*/).forEach(function(token) {
+        // Bỏ pinyin trong ngoặc trước khi tách, để "把 (bǎ)" không hiện hai lần
+        token = token.replace(/[(（][^)）]*[)）]/g, '').trim();
+        // "for sb" -> giải thích "sb"; "a/the" giữ nguyên
+        [token].concat(token.indexOf(' ') > 0 ? token.split(/\s+/) : []).forEach(function(part) {
+            const info = spSlotInfo(part), key = part.toLowerCase();
+            if (!info || seen[key] || info[0] === 'từ bạn đang học') return;
+            seen[key] = true;
+            rows.push('<div><b>' + spEsc(part) + '</b> = ' + spEsc(info[0]) + ': ' + spEsc(info[1]) + '</div>');
+        });
+    });
+    return rows.length ? '<div class="sp-legend"><div class="sp-legend-title">📖 Ký hiệu</div>' + rows.join('') + '</div>' : '';
+}
+// Sau khi xong: tách câu đúng theo từng ô của công thức, giải thích vì sao từ đó đứng ở đó
+function spStructureHtml(g, t) {
+    // Có chấm thì dùng câu AI đã chấm; bấm xem đáp án luôn thì dùng phần tách sẵn lúc ra đề
+    const src = g && g.structure_breakdown && g.structure_breakdown.length ? g : t;
+    const formula = (src && src.structure) || (g && g.structure) || (t && t.structure) || '';
+    const parts = (src && src.structure_breakdown) || [];
+    const explain = (g && g.structure_explain_vi) || (t && t.structure_vi) || '';
+    if (!formula && !parts.length && !explain) return '';
+    let html = '<div class="sp-breakdown"><div class="sp-structure-label">🧩 Giải thích cấu trúc</div>';
+    if (formula) html += '<div class="sp-structure-pattern">' + spEsc(formula) + '</div>';
+    if (parts.length) {
+        // Dòng ghép: V = rely + prep = on + the + N = market mechanism
+        html += '<div class="sp-bd-map">' + parts.map(function(p) {
+            return p.slot && p.slot.toLowerCase() !== p.text.toLowerCase()
+                ? '<b>' + spEsc(p.slot) + '</b> = ' + spEsc(p.text) : '<b>' + spEsc(p.text) + '</b>';
+        }).join(' + ') + '</div>';
+        html += '<div class="sp-bd-parts">' + parts.map(function(p) {
+            const info = spSlotInfo(p.slot);
+            const name = info ? '<i>' + spEsc(info[0]) + '</i>' : '';
+            return '<div class="sp-bd-row"><span class="sp-bd-slot">' + spEsc(p.slot) + '</span><span class="sp-bd-text">' + spEsc(p.text) + '</span>'
+                + (name || p.note_vi ? '<span class="sp-bd-note">' + name + (name && p.note_vi ? ': ' : '') + spFmt(p.note_vi) + '</span>' : '') + '</div>';
+        }).join('') + '</div>';
+    } else {
+        html += spLegendHtml(formula);
+    }
+    if (explain) html += '<div class="sp-bd-explain">📝 ' + spFmt(explain) + '</div>';
+    return html + '</div>';
+}
 function spUsageHtml(u) {
     const sec = function(title, items) {
         if (!items || !items.length) return '';
@@ -2220,10 +2659,10 @@ function spUsageHtml(u) {
         }).join('') + '</div>';
     };
     return '<div class="sp-usage"><div class="sp-usage-head">📇 Thẻ tóm tắt cách dùng "' + spEsc(spState.word) + '"</div>'
-        + sec(spState.lang === 'zh' ? '🔗 Trợ từ / lượng từ / bổ ngữ đi kèm' : '🔗 Giới từ / tiểu từ đi kèm', u.particles)
-        + sec('🤝 Collocation', u.collocations)
+        + sec(spState.lang === 'zh' ? '🔗 Lượng từ / trợ từ / bổ ngữ đi kèm' : '🔗 Giới từ / tiểu từ đi kèm', u.particles)
+        + sec(spState.lang === 'zh' ? '🤝 Từ hay đi kèm (搭配)' : '🤝 Collocation', u.collocations)
         + sec('🏗️ Cấu trúc', u.structures)
-        + sec('🚀 Phrasal verb / idiom / cụm cố định', u.phrases)
+        + sec(spState.lang === 'zh' ? '🚀 Thành ngữ / cụm cố định' : '🚀 Phrasal verb / idiom / cụm cố định', u.phrases)
         + '</div>';
 }
 function spMoreHtml(g) {
@@ -2257,20 +2696,23 @@ function spRenderResult(opts) {
     }
     if (revealed) {
         html += spAnswersHtml(g, t);
+        html += spStructureHtml(g, t);
         const more = spMoreHtml(g);
         if (more) {
             html += '<button type="button" class="toggle-section-btn" onclick="toggleSection(\'sp-more\')">📖 Xem thêm: giải thích, thẻ cách dùng, mẹo nhớ ▼</button>'
                 + '<div id="sp-more" class="collapsible-section" style="display: none;">' + more + '</div>';
         }
         html += st.mode === 'free'
-            ? '<button type="button" class="sp-btn sp-btn-next" onclick="spResetFree()">✍️ Viết câu khác</button>'
-            : '<button type="button" class="sp-btn sp-btn-next" onclick="spNewTask()">🎲 Đề tiếp theo</button>';
+            ? '<button type="button" class="sp-btn tappable sp-btn-next" onclick="spResetFree()">✍️ Viết câu khác</button>'
+            : '<button type="button" class="sp-btn tappable sp-btn-next" onclick="spNewTask()">🎲 Đề tiếp theo</button>';
     }
     spEl('sp-result').innerHTML = html;
 }
 function spResetTask() {
     const st = spState;
-    st.attempts = 0; st.finished = false; st.lastGrade = null; st.taskTags = {};
+    st.attempts = 0; st.finished = false; st.lastGrade = null; st.taskTags = {}; st.error = '';
+    const status = spEl('sp-status');
+    if (status && !st.busy) { status.style.display = 'none'; status.innerHTML = ''; }
     spEl('sp-input').value = '';
     spEl('sp-result').innerHTML = '';
 }
@@ -2286,6 +2728,7 @@ function spSetMode(mode) {
     spRenderLevels();
     spRenderTask();
     spUpdateButtons();
+    spSaveDraft();
     if (mode !== 'free') spNewTask();
 }
 function spResetFree() {
@@ -2294,6 +2737,7 @@ function spResetFree() {
     spResetTask();
     spRenderTask();
     spUpdateButtons();
+    spSaveDraft();
     spEl('sp-input').focus();
 }
 async function spNewTask() {
@@ -2301,9 +2745,13 @@ async function spNewTask() {
     if (!st || st.busy || st.mode === 'free') return;
     const token = st.token, level = st.mode, needUsage = !st.log.usage;
     const textAtStart = spEl('sp-input').value;
+    const request = spStartRequest('task', token);
+    request.validate = function(d) {
+        if (!d.task_vi.trim() || !d.reference_answers.some(function(s) { return s.trim(); })) throw new Error('Đề bài chưa đầy đủ');
+    };
     spSetBusy(true, 'Đang ra đề ' + SP_LEVELS[String(level)].name + '...');
     try {
-        const data = await geminiGenerateJson(spBuildTaskPrompt(level, needUsage), spSchema(SP_TASK_SCHEMA, needUsage), 0.9);
+        const data = await geminiGenerateJson(spBuildTaskPrompt(level, needUsage), spSchema(SP_TASK_SCHEMA, needUsage), 0.9, request);
         if (!spIsCurrent(token)) return;
         if (!data || !data.task_vi) throw new Error('AI không trả về đề bài');
         const list = function(v) { return Array.isArray(v) ? v.map(String).filter(Boolean) : []; };
@@ -2313,6 +2761,9 @@ async function spNewTask() {
             phrase_vi: level === 1 ? String(data.phrase_vi || '').trim() : '',
             focus: String(data.focus || ''),
             focus_hint_vi: String(data.focus_hint_vi || ''),
+            structure: String(data.structure || '').trim(),
+            structure_vi: String(data.structure_vi || '').trim(),
+            structure_breakdown: spNormalizeBreakdown(data.structure_breakdown),   // giấu tới khi xong / xem đáp án
             // Bậc 1–2 chỉ hiện từ đang học: AI hay liệt kê cả từ đi kèm, làm lộ đáp án
             must_use: level === 3 && list(data.must_use).length ? list(data.must_use).slice(0, 3) : [st.word],
             reference_answers: list(data.reference_answers),
@@ -2327,9 +2778,9 @@ async function spNewTask() {
         spRenderTask();
         spEl('sp-input').focus();
     } catch (e) {
-        if (spIsCurrent(token)) { console.error('[Luyện câu]', e); showPracticeMessage('❌ ' + e.message, 'error'); }
+        if (spIsCurrent(token)) { st.error = e.message; console.warn('[Luyện câu]', e.message); showPracticeMessage('❌ ' + e.message, 'error'); }
     } finally {
-        if (spIsCurrent(token)) spSetBusy(false);
+        if (spIsCurrent(token)) { st.request = null; spSetBusy(false); spSaveDraft(); }
     }
 }
 async function spCheck() {
@@ -2339,9 +2790,10 @@ async function spCheck() {
     const answer = spEl('sp-input').value.trim();
     if (!answer) { showPracticeMessage('⚠️ Hãy viết câu trả lời trước khi chấm', 'error'); return; }
     const token = st.token, attempt = st.attempts + 1, needUsage = !st.log.usage;
+    const request = spStartRequest('grade', token);
     spSetBusy(true, 'Đang chấm...');
     try {
-        const g = spNormalizeGrade(await geminiGenerateJson(spBuildGradePrompt(answer, attempt, needUsage), spSchema(SP_GRADE_SCHEMA, needUsage), 0.2));
+        const g = spNormalizeGrade(await geminiGenerateJson(spBuildGradePrompt(answer, attempt, needUsage), spSchema(SP_GRADE_SCHEMA, needUsage), 0.2, request));
         if (!spIsCurrent(token)) return;
         st.attempts = attempt;
         st.lastGrade = g;
@@ -2367,9 +2819,9 @@ async function spCheck() {
         spRenderMemory();
         spRenderTask();
     } catch (e) {
-        if (spIsCurrent(token)) { console.error('[Luyện câu]', e); showPracticeMessage('❌ ' + e.message, 'error'); }
+        if (spIsCurrent(token)) { st.error = e.message; console.warn('[Luyện câu]', e.message); showPracticeMessage('❌ ' + e.message, 'error'); }
     } finally {
-        if (spIsCurrent(token)) spSetBusy(false);
+        if (spIsCurrent(token)) { st.request = null; spSetBusy(false); spSaveDraft(); }
     }
 }
 function spReveal() {
@@ -2379,6 +2831,7 @@ function spReveal() {
     spRenderResult({ gaveUp: true });
     spRenderTask();
     spUpdateButtons();
+    spSaveDraft();
 }
 
 /* ==================== TAB ÁP DỤNG: ĐỌC HIỂU + TỪ VỰNG TRONG BÀI ==================== */
@@ -2621,9 +3074,11 @@ function rdBuildPrompt() {
         'PASSAGE:\n"""\n' + content + '\n"""',
         '',
         'RULES:',
-        '- "vocabulary": exactly ' + RD_MAX_WORDS + ' items that appear in the passage. Prefer multi-word phrases and collocations (e.g. "draw up a plan", "long-term goals"), especially ones containing or naturally going with the target word; then useful single words. Do not pick the bare target word alone or very easy words.',
-        '  Each item: "term" (dictionary form, e.g. "draw up"' + (zh ? ', followed by pinyin in brackets' : '') + '), "in_text" (the EXACT words copied from the passage, same spelling), "pos" (short, e.g. n, v, adj, adv, phr v, colloc, idiom), "meaning_vi" (short Vietnamese meaning in this context), "example" (the sentence from the passage that contains it), "example_vi" (Vietnamese translation of that sentence).',
-        '- "structures": exactly ' + RD_MAX_STRUCTURES + ' useful grammar patterns used in the passage. Each: "pattern" (e.g. "be responsible for + V-ing"), "in_text" (exact words from the passage), "explain_vi" (one short Vietnamese sentence on how to use it), "example" (the sentence from the passage), "example_vi" (its Vietnamese translation).',
+        '- "vocabulary": exactly ' + RD_MAX_WORDS + ' items that appear in the passage. Prefer multi-word phrases and collocations (e.g. ' + (zh ? '"解决问题", "提高效率"' : '"draw up a plan", "long-term goals"') + '), especially ones containing or naturally going with the target word; then useful single words. Do not pick the bare target word alone or very easy words.',
+        '  Each item: "term" (dictionary form, e.g. ' + (zh ? '"解决 (jiějué)", Hanzi followed by pinyin in brackets' : '"draw up"') + '), "in_text" (the EXACT words copied from the passage, same spelling), "pos" (short, e.g. ' + (zh ? 'n, v, adj, adv, MW, colloc, 成语' : 'n, v, adj, adv, phr v, colloc, idiom') + '), "meaning_vi" (short Vietnamese meaning in this context), "example" (the sentence from the passage that contains it), "example_vi" (Vietnamese translation of that sentence).',
+        '- "structures": exactly ' + RD_MAX_STRUCTURES + ' useful grammar patterns used in the passage. Each: "pattern" (e.g. '
+            + (zh ? '"S + 把(bǎ) + O + V + Comp", "一边(yìbiān) + V1 + 一边(yìbiān) + V2"; a Chinese pattern with Chinese slot labels and pinyin for function words, never an English pattern such as V-ing or to-V' : '"be responsible for + V-ing"')
+            + '), "in_text" (exact words from the passage), "explain_vi" (one short Vietnamese sentence on how to use it), "example" (the sentence from the passage), "example_vi" (its Vietnamese translation).',
         'Return JSON only.'
     ].join('\n');
 }
@@ -2731,7 +3186,9 @@ function displayChineseStory() {
 /* ==================== SPELL CHECK - TỰ ĐỘNG KIỂM TRA ==================== */
 function checkSpellingForBackSide(){
     // Lấy từ đã lưu từ front template
-    let userInput = localStorage.getItem('userSpellingInput');
+    let userInput = window.__avgSpellingInput || '';
+    try { userInput = localStorage.getItem('userSpellingInput') || userInput; } catch (e) { /* private/restricted webview */ }
+    window.__avgSpellingInput = '';
     
     // Nếu không có trong localStorage, thử lấy từ các element khác
     if (!userInput) {
@@ -2743,7 +3200,7 @@ function checkSpellingForBackSide(){
         else if (tp) userInput = tp.textContent;
     } else {
         // Xóa sau khi đã lấy để tránh ảnh hưởng lần sau
-        localStorage.removeItem('userSpellingInput');
+        try { localStorage.removeItem('userSpellingInput'); } catch (e) { /* private/restricted webview */ }
     }
 
     const correctWord = document.querySelector('.word')?.textContent?.trim() || '';
@@ -2848,7 +3305,8 @@ function openTab(evt,tabName){
   tablinks=document.getElementsByClassName("tab-link");
   for(i=0;i<tablinks.length;i++){tablinks[i].className=tablinks[i].className.replace(" active","");}
   document.getElementById(tabName).style.display="block";
-  evt.currentTarget.className+=" active";
+  if (evt && evt.currentTarget) evt.currentTarget.className+=" active";
+  if (tabName === 'LuyenCau') avgRunRenderer('spInit');
 }
 
 function openStrokeAnimationModal(){
@@ -2869,6 +3327,39 @@ window.onclick=function(event){
   if(event.target==modal){ closeStrokeAnimationModal(); }
 }
 
+// Bấm vào bộ thủ / chữ: nét chạy của bộ đó, rồi của cả chữ chứa nó; có nút luyện viết và xem từng nét
+function openRadicalStrokeModal(glyph, host) {
+  if (!glyph) return;
+  if (!hanziWriterLoaded || typeof HanziWriter === 'undefined') {
+    showPracticeMessage('⚠️ Chưa tải xong công cụ vẽ nét (cần có mạng). Đợi vài giây rồi bấm lại nhé.', 'error');
+    return;
+  }
+  const container = document.getElementById('stroke-order-container');
+  const items = [{ ch: glyph, label: host && host !== glyph ? 'Bộ ' + glyph : 'Chữ ' + glyph }];
+  if (host && host !== glyph) items.push({ ch: host, label: 'Chữ ' + host + ' (có bộ ' + glyph + ')' });
+  document.getElementById('modal-title').textContent = host && host !== glyph ? 'Bộ ' + glyph + ' trong chữ ' + host : 'Cách viết chữ ' + glyph;
+  container.innerHTML = ''; writers = []; clearTimeout(animationChainTimeout);
+  items.forEach(function(it, i) {
+    const box = document.createElement('div');
+    box.className = 'char-animation-container';
+    box.innerHTML = '<h3>' + spEsc(it.label) + '</h3><div id="char-target-' + i + '" class="char-target"></div>'
+      + '<div class="char-buttons"><button onclick="writers[' + i + '].animateCharacter()">▶️ Vẽ lại</button>'
+      + '<button onclick="writers[' + i + '].quiz()">✍️ Tự viết thử</button>'
+      + '<button onclick="openFanningStrokesModal(\'' + it.ch.replace(/['\\]/g, '') + '\')">🧩 Từng nét</button></div>';
+    container.appendChild(box);
+    writers.push(HanziWriter.create('char-target-' + i, it.ch, {
+      width: 150, height: 150, padding: 5, showOutline: true, strokeAnimationSpeed: 1, delayBetweenStrokes: 150,
+      onLoadCharDataError: function() {
+        const t = document.getElementById('char-target-' + i);
+        if (t) t.innerHTML = '<div class="no-data">Chưa có dữ liệu nét cho "' + spEsc(it.ch) + '" (thường gặp ở dạng biến thể của bộ thủ).</div>';
+      }
+    }));
+  });
+  // Tự chạy: vẽ bộ thủ trước, xong mới vẽ cả chữ
+  const run = function(i) { if (writers[i]) writers[i].animateCharacter({ onComplete: function() { animationChainTimeout = setTimeout(function(){ run(i + 1); }, 500); } }); };
+  run(0);
+  document.getElementById('stroke-order-modal').style.display = 'block';
+}
 function openFanningStrokesModal(char) {
     if (!hanziWriterLoaded) return;
     setupHanziWriterModal('stroke-order-container', char, 'fanning');
@@ -3067,19 +3558,39 @@ function renderLists(){
 }
 
 /* ==================== Grammar notes ==================== */
+// Tiếng Trung: hiện "Hán Việt: Chuyên Nghiệp · HSK 4" ngay dưới pinyin (dữ liệu nằm trong GrammarNotes)
+function renderChineseHeaderInfo(d){
+  const ipa = document.querySelector('.word-section .ipa');
+  if (!ipa || !d || document.getElementById('han-viet-line')) return;
+  const hv = String(d.han_viet || '').trim();
+  const hsk = String(d.hsk_level || '').trim().replace(/^hsk\s*/i, '');
+  if (!hv && !hsk) return;
+  const el = document.createElement('div');
+  el.id = 'han-viet-line';
+  el.className = 'ipa';
+  el.textContent = [hv ? 'Hán Việt: ' + hv : '', hsk ? 'HSK ' + hsk : ''].filter(Boolean).join(' · ');
+  ipa.insertAdjacentElement('afterend', el);
+}
 function renderGrammar(){
   const dataEl = document.getElementById('grammar-notes-data');
   const containerEl = document.getElementById('grammar-notes-container');
   if (!(dataEl && containerEl && dataEl.textContent.trim())) return;
   try{
     const d = JSON.parse(dataEl.textContent);
+    renderChineseHeaderInfo(d);
+    // Tiếng Trung: lượng từ đi kèm danh từ (cất trong GrammarNotes, không cần field riêng)
+    const mws = Array.isArray(d.measure_words) ? d.measure_words.filter(function(m){ return m && m.mw; }) : [];
+    const mwHtml = mws.length ? `<div class="grammar-box"><div class="grammar-box-title">Lượng từ</div><div class="grammar-box-content">`
+        + mws.map(function(m){ return '<b>' + spEsc(m.mw) + '</b>' + (m.pinyin ? ' (' + spEsc(m.pinyin) + ')' : '') + (m.example ? ': ' + spEsc(m.example) : ''); }).join('<br>')
+        + `</div></div>` : '';
     let html = '';
-    if (d.classification){
+    if (d.classification || mwHtml){
       html += `<div class="tab-item-group grammar-notes">
         <div class="group-title">📚 Lưu ý Ngữ pháp</div>
-        <div class="grammar-box"><div class="grammar-box-title">Phân loại</div><div class="grammar-box-content">${d.classification}</div></div>
+        ${d.classification?`<div class="grammar-box"><div class="grammar-box-title">Phân loại</div><div class="grammar-box-content">${d.classification}</div></div>`:''}
         ${d.explanation_vi?`<div class="grammar-box"><div class="grammar-box-title">Giải thích</div><div class="grammar-box-content">${d.explanation_vi}</div></div>`:''}
         ${d.usage_note?`<div class="grammar-box"><div class="grammar-box-title">Lưu ý sử dụng</div><div class="grammar-box-content">${d.usage_note}</div></div>`:''}
+        ${mwHtml}
       </div>`;
     }
     containerEl.innerHTML = html;
@@ -3154,7 +3665,42 @@ function renderUsage(){
 }
 
 /* ==================== RADICALS ==================== */
+// Tab Bộ: thêm ô "Cách viết từng chữ" ở đầu, và cho mọi ô có data-stroke-char bấm vào để xem nét viết
 function renderRadicals() {
+  renderRadicalsBody();
+  const containerEl = document.getElementById('radicals-container');
+  const mainWord = document.querySelector('.word')?.textContent?.trim() || '';
+  if (!containerEl) return;
+  const chars = Array.from(mainWord).filter(function(c){ return /[㐀-鿿豈-﫿]/.test(c); });
+  if (chars.length && !document.getElementById('stroke-tiles')) {
+    containerEl.insertAdjacentHTML('afterbegin', '<div class="character-analysis" id="stroke-tiles">'
+      + '<div class="analysis-header"><h3 class="analysis-title">✍️ Cách viết từng chữ</h3></div><div class="components-list">'
+      + chars.map(function(c){
+          return '<div class="component-item" data-stroke-char="' + spEsc(c) + '" style="cursor:pointer" title="Bấm để xem cách viết">'
+            + '<div class="component-char">' + spEsc(c) + '</div><div class="component-details">'
+            + '<div class="component-meaning"><b>▶️ Bấm để xem thứ tự nét</b></div>'
+            + '<div class="component-meaning">Xem nét chạy, xem từng nét, rồi tự viết thử</div></div></div>';
+        }).join('') + '</div></div>');
+  }
+  containerEl.onclick = function(e){
+    const item = e.target.closest('[data-stroke-char]');
+    if (item && item.getAttribute('data-stroke-char')) openRadicalStrokeModal(item.getAttribute('data-stroke-char'), item.getAttribute('data-stroke-host') || '');
+  };
+}
+// Bộ thủ: lấy đúng chữ của bộ. AI đôi khi ghi cả chữ gốc (专) vào "character", còn bộ thật nằm trong ngoặc ở tên ("Bộ Thốn (寸)")
+function radicalGlyph(r, mainWord) {
+  const ch = String(r.character || '').trim();
+  const HAN = /^[⺀-⿟㐀-鿿豈-﫿\ud840-𯰀-\udfff]+$/;
+  const nm = String(r.name || '').trim();
+  // "name": "厂" (chữ trơn) hoặc "Bộ Thốn (寸)" (trong ngoặc)
+  const m = HAN.test(nm) ? [nm, nm] : (String(r.name_vi || '') + ' ' + nm).match(/[(（]\s*([⺀-⿟㐀-鿿豈-﫿\ud840-𯰀-\udfff]+)\s*[)）]/);
+  const host = String(r.in_char || '').trim();
+  if (ch && mainWord.indexOf(ch) >= 0 && m && m[1] !== ch) return { glyph: m[1], host: ch };
+  const glyph = ch || (m ? m[1] : '');
+  const chars = Array.from(mainWord);
+  return { glyph: glyph, host: host || (chars.length === 1 && chars[0] !== glyph ? chars[0] : '') };
+}
+function renderRadicalsBody() {
   const dataEl = document.getElementById('radicals-data');
   const containerEl = document.getElementById('radicals-container');
   const mainWord = document.querySelector('.word')?.textContent?.trim() || '';
@@ -3245,17 +3791,19 @@ function renderRadicalsFromJSON(data, mainWord, containerEl) {
       const name = r.name_vi || r.name || '';
       const extraName = (r.name && r.name !== name) ? ` (${r.name})` : '';
       const strokes = parseInt(r.stroke_count, 10);
+      const g = radicalGlyph(r, mainWord);
       finalHtml += `
-          <div class="component-item">
-            <div class="component-char">${r.character || ''}</div>
+          <div class="component-item" data-stroke-char="${spEsc(g.glyph)}" data-stroke-host="${spEsc(g.host)}" style="cursor:pointer" title="Bấm để xem cách viết">
+            <div class="component-char">${spEsc(g.glyph)}</div>
             <div class="component-details">
               <div class="component-header">
                 <span class="component-pinyin">${name}${extraName}</span>
                 ${strokes > 0 ? `<span class="component-role other">${strokes} nét</span>` : ''}
               </div>
               <div class="component-meaning">${r.meaning_vi || r.meaning || ''}</div>
-              ${r.position ? `<div class="component-meaning">📍 Vị trí: ${r.position}</div>` : ''}
+              ${r.position ? `<div class="component-meaning">📍 Vị trí: ${r.position}${g.host ? ' (trong chữ ' + spEsc(g.host) + ')' : ''}</div>` : ''}
               ${r.variant ? `<div class="component-meaning">🔁 Biến thể: ${r.variant}</div>` : ''}
+              ${g.glyph ? `<div class="component-meaning"><b>▶️ Bấm để xem cách viết bộ này</b></div>` : ''}
             </div>
           </div>`;
     });
@@ -3298,7 +3846,7 @@ function renderRadicalsFromJSON(data, mainWord, containerEl) {
         const role = comp.role || '';
         const roleClass = role.includes('Nghĩa') ? 'semantic' : (role.includes('Âm') ? 'phonetic' : 'other');
         finalHtml += `
-          <div class="component-item">
+          <div class="component-item" data-stroke-char="${spEsc(comp.component || '')}" data-stroke-host="${spEsc(ch)}" style="cursor:pointer" title="Bấm để xem cách viết">
             <div class="component-char">${comp.component || ''}</div>
             <div class="component-details">
               <div class="component-header">
@@ -3499,49 +4047,30 @@ function liteFillFull() {
 }
 
 /* ==================== Render all ==================== */
-function renderJsonData(){
-    // 1. Xử lý các phần hiển thị cơ bản trước
-    liteSetupTabs();
-    processChineseExample();
-    
-    // 2. Các hàm khởi tạo có thể nặng, đưa vào setTimeout để không chặn UI
-    setTimeout(() => {
-        if(typeof checkSpellingForBackSide === 'function') checkSpellingForBackSide();
-        if(typeof displayChineseStory === 'function') displayChineseStory();
-        if(typeof spInit === 'function') spInit();
-        if(typeof rdInit === 'function') rdInit();
-    }, 50);
-
-    // 3. Render các nội dung chi tiết
-    setTimeout(() => {
-        if(typeof renderEtymologyExamples === 'function') renderEtymologyExamples();
-        if(typeof displayContextInBoSung === 'function') displayContextInBoSung();
-        
-        if(typeof renderRecommendation === 'function') renderRecommendation();
-        if(typeof renderEtymology === 'function') renderEtymology();
-        if(typeof renderLists === 'function') renderLists();
-        if(typeof renderGrammar === 'function') renderGrammar();
-        if(typeof renderUsage === 'function') renderUsage();
-        if(typeof renderRadicals === 'function') renderRadicals();
-        if(typeof renderExercises === 'function') renderExercises();
-        if(typeof renderOtherMeanings === 'function') renderOtherMeanings();
-    }, 150);
-
-    // 4. Thêm nút TTS cuối cùng
-    setTimeout(() => {
-        if(typeof addTTSButtonsToAllWords === 'function') addTTSButtonsToAllWords();
-        // AnkiMobile (iPhone) chỉ cho chạm vào nút/liên kết/phần tử có class "tappable":
-        // thiếu class này thì chạm vào ô nhập không hiện bàn phím (phải đè lâu)
-        document.querySelectorAll('input, textarea, select, summary').forEach(function(el) { el.classList.add('tappable'); });
-    }, 500);
+// Each optional renderer is isolated: a spelling/storage error cannot disable practice.
+function avgRunRenderer(name) {
+    try { if (typeof window[name] === 'function') window[name](); }
+    catch (e) { console.warn('[Thẻ] ' + name + ': ' + e.message); }
 }
-
-if(document.readyState==="loading"){ 
-    document.addEventListener("DOMContentLoaded", renderJsonData); 
-} else { 
-    renderJsonData(); 
+function renderJsonData() {
+    const session = avgCardSession;
+    if (!avgSessionIsCurrent(session) || session.renderStarted) return;
+    session.renderStarted = true;
+    avgRunRenderer('spInit');
+    ['liteSetupTabs', 'processChineseExample', 'checkSpellingForBackSide', 'displayChineseStory', 'rdInit'].forEach(avgRunRenderer);
+    const later = function(delay, names) {
+        session.timers.push(setTimeout(function() {
+            if (avgSessionIsCurrent(session)) names.forEach(avgRunRenderer);
+        }, delay));
+    };
+    later(100, ['renderEtymologyExamples', 'displayContextInBoSung', 'renderRecommendation', 'renderEtymology',
+        'renderLists', 'renderGrammar', 'renderUsage', 'renderRadicals', 'renderExercises', 'renderOtherMeanings']);
+    later(250, ['addTTSButtonsToAllWords']);
+    document.querySelectorAll('input, textarea, select, summary, .sp-btn, .sp-level').forEach(function(el) { el.classList.add('tappable'); });
 }
-
+// These elements precede this script even when Anki inserts the card into an already-loaded page.
+if (document.getElementById('sp-container')) renderJsonData();
+else document.addEventListener('DOMContentLoaded', renderJsonData, { once: true });
 </script>
 
 {{#Domain_Tag}}

@@ -151,10 +151,10 @@ You can enter context in the **Context** field or add a hint directly after the 
 
 Here are some examples:
 
-- **By situation:** `business meeting`, `medical terminology` — asks the AI to explain the word in a business-meeting or medical-terminology context.
-- **By topic:** `technology`, `medical`, `education` — guides the content toward technology, medicine, or education.
-- **By part of speech:** `run [verb]`, `light [noun]`, `fast [adj]`, `quickly [adv]` — asks the AI to focus on a specific part of speech.
-- **Combining context and part of speech:** `business meeting [noun]` — guides the result using both a context and a part of speech.
+- **By situation:** `business meeting`, `medical terminology`: asks the AI to explain the word in a business-meeting or medical-terminology context.
+- **By topic:** `technology`, `medical`, `education`: guides the content toward technology, medicine, or education.
+- **By part of speech:** `run [verb]`, `light [noun]`, `fast [adj]`, `quickly [adv]`: asks the AI to focus on a specific part of speech.
+- **Combining context and part of speech:** `business meeting [noun]`: guides the result using both a context and a part of speech.
 
 Common part-of-speech abbreviations:
 
