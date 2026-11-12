@@ -955,7 +955,8 @@ The user specifically requested the word as a **{requested_pos.upper()} ({pos_na
         radicals_prompt_section = """
 "radicals": [
     {
-        "character": "部",
+        "character": "ONLY the radical/component itself (e.g. 氵 or 又 for 汉), NEVER the whole character of the word",
+        "in_char": "the character of the word that contains this radical (e.g. 汉)",
         "name_vi": "tên bộ thủ bằng tiếng Việt",
         "name": "tên bộ thủ gốc",
         "meaning_vi": "ý nghĩa của bộ thủ",
@@ -1009,7 +1010,98 @@ The user specifically requested the word as a **{requested_pos.upper()} ({pos_na
                 "explanation": "Explanation in English"
             }
         ]
-    },'''
+    },'''.replace("{keyword}", keyword)   # chuỗi thường (không phải f-string) -> phải tự điền từ vào
+
+    is_chinese = language == "Chinese" or bool(has_chinese_char)
+
+    # Bài tập: tiếng Anh luyện dạng từ (noun/verb/adj/adv). Tiếng Trung không biến đổi hình thái từ,
+    # nên luyện lượng từ/trợ từ đi kèm, 搭配, phân biệt từ gần nghĩa và trật tự từ.
+    if is_chinese:
+        exercises_prompt = f"""
+    "exercises": [
+        {{
+            "type": "Lượng từ / trợ từ đi kèm",
+            "question": "A natural Chinese sentence (Hanzi only, no pinyin) with ONLY ONE blank '___'. The blank is the word that must go WITH '{keyword}': its measure word 量词 if it is a noun, its complement 补语 or aspect particle 了/着/过 if it is a verb, or the particle/adverb it needs (的/地/得, 很...) otherwise. '{keyword}' itself stays visible in the sentence.",
+            "answer": "Only the missing word(s) in Hanzi (e.g. 本, 完, 得).",
+            "answer_pos": "Short Vietnamese label of the answer, e.g. 'lượng từ', 'bổ ngữ kết quả', 'trợ từ'.",
+            "translation_vi": "Vietnamese translation, then <br>, then <i>Pinyin: ...</i> of the whole question.",
+            "explanation_vi": "Short Vietnamese explanation of why this word goes with '{keyword}'."
+        }},
+        {{
+            "type": "Từ đi kèm (搭配)",
+            "question": "A natural Chinese sentence (Hanzi only) with ONLY ONE blank '___' where '{keyword}' must be filled in, inside one of its most common collocations (verb–object or adjective–noun).",
+            "answer": "{keyword}",
+            "answer_pos": "Vietnamese part of speech of '{keyword}' in this sentence, e.g. 'danh từ'.",
+            "translation_vi": "Vietnamese translation, then <br>, then <i>Pinyin: ...</i> of the whole question.",
+            "explanation_vi": "Short Vietnamese note naming the collocation."
+        }},
+        {{
+            "type": "Phân biệt từ gần nghĩa",
+            "question": "A natural Chinese sentence (Hanzi only) with ONLY ONE blank '___' where '{keyword}' is correct but a common near-synonym that Vietnamese learners confuse with it would be wrong.",
+            "answer": "{keyword}",
+            "answer_pos": "Vietnamese part of speech of '{keyword}' in this sentence.",
+            "translation_vi": "Vietnamese translation, then <br>, then <i>Pinyin: ...</i> of the whole question.",
+            "explanation_vi": "Short Vietnamese explanation: name the near-synonym (Hanzi + pinyin) and why it does not fit here."
+        }},
+        {{
+            "type": "Trật tự từ",
+            "question": "A natural Chinese sentence (Hanzi only) with ONLY ONE blank '___' that tests where '{keyword}' goes in a typical Chinese word order (time/place/coverb phrases BEFORE the verb, adverb before the verb, 的 before the noun...).",
+            "answer": "The exact Hanzi for the blank, containing '{keyword}'.",
+            "answer_pos": "Vietnamese part of speech of '{keyword}'.",
+            "translation_vi": "Vietnamese translation, then <br>, then <i>Pinyin: ...</i> of the whole question.",
+            "explanation_vi": "Short Vietnamese explanation of the word-order rule, comparing it with Vietnamese word order if they differ."
+        }}
+    ],"""
+        chinese_rules_section = f"""
+**CHINESE-ONLY RULES ("{keyword}" is Chinese: do NOT apply English-only ideas):**
+- "synonyms": real near-synonyms 近义词 (same part of speech, close meaning). NEVER compounds or phrases containing the word (for 专业 do NOT list 专业知识). Return [] if none.
+- "antonyms": real antonyms 反义词, or [].
+- "word_family": common words that share a character with "{keyword}" (e.g. 专业 → 专家, 职业), each with pinyin.
+- "collocations": the most common 搭配 (verb–object, adjective–noun, measure word + noun), e.g. 选择专业, 专业知识.
+- "phrasal_verbs": Chinese has NO phrasal verbs: ALWAYS return [].
+- "idioms": 成语, 惯用语 or fixed expressions that contain the word or are closely tied to it. Never invent one; return [] if none.
+- "other_meaning": every "example_en" MUST be a Chinese sentence (Hanzi, then pinyin in parentheses), NEVER an English sentence.
+- "usage_patterns" "grammar_note": explain the CHINESE grammar point (word order, particles, complements, measure words), not English grammar.
+- "etymology": explain the characters (meaning of each character and how they combine), not Latin/Greek roots: put the characters in "structure.root", leave prefix/suffix empty; use Chinese dictionaries (现代汉语词典, 汉典) as sources.
+- "grammar_notes": ALSO fill "han_viet" (Sino-Vietnamese reading of each character, capitalised, e.g. 专业 → "Chuyên Nghiệp"), "hsk_level" (HSK 3.0 level: "1"–"6" or "7-9"; empty string if the word is not in the HSK list or you are not sure) and "measure_words" (only if the word is a noun: the measure word(s) it takes, e.g. [{{"mw": "个", "pinyin": "gè", "example": "一个专业 (yí gè zhuānyè)"}}]; [] otherwise).
+"""
+    else:
+        exercises_prompt = f"""
+    "exercises": [
+        {{
+            "type": "Word Form (Noun)",
+            "question":  "A meaningful fill-in-the-blank sentence with ONLY ONE blank '___' that tests the NOUN form of '{keyword}'. The sentence should make it clear from context that a noun is required. If a noun form doesn't exist, create a general usage question.",
+            "answer": "The correct NOUN form of '{keyword}'.",
+            "answer_pos": "noun",
+            "translation_vi": "Vietnamese translation and if language is Chinese, Pinyin of the question on a new line.",
+            "explanation_vi": "Short, easy-to-understand explanation in Vietnamese."
+        }},
+        {{
+            "type": "Word Form (Verb)",
+            "question": "A meaningful fill-in-the-blank sentence with ONLY ONE blank '___' that tests the VERB form of '{keyword}'. The sentence should make it clear from context that a verb is required. If a verb form doesn't exist, create another collocation question.",
+            "answer": "The correct VERB form'{keyword}'.",
+            "answer_pos": "verb",
+            "translation_vi": "Vietnamese translation and if language is Chinese, Pinyin of the question on a new line.",
+            "explanation_vi": "Short, easy-to-understand explanation in Vietnamese."
+        }},
+        {{
+            "type": "Word Form (Adjective)",
+            "question": "A meaningful fill-in-the-blank sentence with ONLY ONE blank '___' that tests the ADJECTIVE form of '{keyword}'. The sentence should make it clear from context that an adjective is required. If an adjective form doesn't exist, create a phrasal verb question.",
+            "answer": "The correct ADJECTIVE form'{keyword}'.",
+            "answer_pos": "adjective",
+            "translation_vi": "Vietnamese translation and if language is Chinese, Pinyin of the question on a new line.",
+            "explanation_vi": "Short, easy-to-understand explanation in Vietnamese."
+        }},
+        {{
+            "type": "Word Form (Adverb)",
+            "question": "A meaningful fill-in-the-blank sentence with ONLY ONE blank '___' that tests the ADVERB form of '{keyword}'. The sentence should make it clear from context that an adverb is required. If an adverb form doesn't exist, create a general usage question.",
+            "answer": "The correct ADVERB form'{keyword}'.",
+            "answer_pos": "adverb",
+            "translation_vi": "Vietnamese translation and if language is Chinese, Pinyin of the question on a new line.",
+            "explanation_vi": "Short, easy-to-understand explanation in Vietnamese."
+        }}
+    ],"""
+        chinese_rules_section = ""
 
     # Tạo Base Prompt (Đã chèn context_section vào đầu)
     base_prompt = f"""
@@ -1071,14 +1163,14 @@ Provide a comprehensive breakdown in a strict JSON format.
 - Order meanings by frequency of usage (most common first).
 
 **SPECIAL INSTRUCTIONS FOR CHINESE CHARACTERS:**
-1. For radicals analysis: Identify ALL component radicals that form this character, not just the main radical.
+1. For radicals analysis: Identify ALL component radicals that form this character, not just the main radical. List ONLY components that are really written in the SIMPLIFIED form of the character (do not take components from the traditional form, e.g. 专 does not contain 厂). For a word of several characters, cover each character and fill "in_char".
 2. For each radical, provide: character, Vietnamese name, meaning, stroke count, and position in the character.
 3. For character components: Identify semantic and phonetic components with their roles.
 4. Include detailed analysis and memory stories to help with memorization.
 
 **CRITICAL RULE FOR CHINESE:** For any field containing Chinese characters, YOU MUST also provide the corresponding Hanyu Pinyin in parentheses below the characters. This applies to `example_en`, `context_example_en`, `spoken_examples`, `writing_patterns`, and all component/explanation fields. Except for 'word' field.
 **EXCEPTION FOR EXERCISES:** In the `exercises` array, DO NOT include Pinyin in the `question` field. Instead, for the `translation_vi` field, first provide the Vietnamese translation, then add a `<br>` tag, and then provide the Pinyin for the original Chinese question, like this: "Translation text<br><i>Pinyin: Nǐ hǎo ma?</i>".
-
+{chinese_rules_section}
 {{
     "is_misspelled": false,
     "corrected_spelling": "Empty string unless is_misspelled is true (see SPELLING rules).",
@@ -1092,41 +1184,7 @@ Provide a comprehensive breakdown in a strict JSON format.
     "example_en": "Example sentence in original language using <b>{keyword}</b>. (Follow Pinyin rule if Chinese).",
     "example_vi": "Vietnamese translation of the example.",
     {radicals_prompt_section}
-    
-    "exercises": [
-        {{
-            "type": "Word Form (Noun)",
-            "question":  "A meaningful fill-in-the-blank sentence with ONLY ONE blank '___' that tests the NOUN form of '{keyword}'. The sentence should make it clear from context that a noun is required. If a noun form doesn't exist, create a general usage question.",
-            "answer": "The correct NOUN form of '{keyword}'.",
-            "answer_pos": "noun",
-            "translation_vi": "Vietnamese translation and if language is Chinese, Pinyin of the question on a new line.",
-            "explanation_vi": "Short, easy-to-understand explanation in Vietnamese."
-        }},
-        {{
-            "type": "Word Form (Verb)",
-            "question": "A meaningful fill-in-the-blank sentence with ONLY ONE blank '___' that tests the VERB form of '{keyword}'. The sentence should make it clear from context that a verb is required. If a verb form doesn't exist, create another collocation question.",
-            "answer": "The correct VERB form'{keyword}'.",
-            "answer_pos": "verb",
-            "translation_vi": "Vietnamese translation and if language is Chinese, Pinyin of the question on a new line.",
-            "explanation_vi": "Short, easy-to-understand explanation in Vietnamese."
-        }},
-        {{
-            "type": "Word Form (Adjective)",
-            "question": "A meaningful fill-in-the-blank sentence with ONLY ONE blank '___' that tests the ADJECTIVE form of '{keyword}'. The sentence should make it clear from context that an adjective is required. If an adjective form doesn't exist, create a phrasal verb question.",
-            "answer": "The correct ADJECTIVE form'{keyword}'.",
-            "answer_pos": "adjective",
-            "translation_vi": "Vietnamese translation and if language is Chinese, Pinyin of the question on a new line.",
-            "explanation_vi": "Short, easy-to-understand explanation in Vietnamese."
-        }},
-        {{
-            "type": "Word Form (Adverb)",
-            "question": "A meaningful fill-in-the-blank sentence with ONLY ONE blank '___' that tests the ADVERB form of '{keyword}'. The sentence should make it clear from context that an adverb is required. If an adverb form doesn't exist, create a general usage question.",
-            "answer": "The correct ADVERB form'{keyword}'.",
-            "answer_pos": "adverb",
-            "translation_vi": "Vietnamese translation and if language is Chinese, Pinyin of the question on a new line.",
-            "explanation_vi": "Short, easy-to-understand explanation in Vietnamese."
-        }}
-    ],
+    {exercises_prompt}
     "usage_patterns": {{
         "spoken_examples": [
             {{ "sentence": "Provide a common, natural sentence for daily conversation.", "translation": "Nghĩa tiếng Việt" }},
@@ -1177,6 +1235,13 @@ Provide a comprehensive breakdown in a strict JSON format.
     "recommendation": { "use_context": "VN: the fuller explanation of the meaning and when/how to use the word (descriptions go here, not in definition_vi)", "avoid_context": "VN", "context_example_en": "Ex", "context_example_vi": "VN" }
 }
 """
+    if is_chinese:
+        # Hán Việt, cấp HSK, lượng từ: cất trong GrammarNotes (field có sẵn) để thẻ cũ lẫn bộ thẻ mẫu của người
+        # mới cài đều hiển thị được, không phải thêm field mới (thêm field = đổi cấu trúc, buộc full sync)
+        end_prompt = end_prompt.replace(
+            '"grammar_notes": { "classification": "VN", "explanation_vi": "VN" },',
+            '"grammar_notes": { "classification": "VN", "explanation_vi": "VN", "han_viet": "Hán Việt of each character, capitalised", '
+            '"hsk_level": "1-6, 7-9 or empty", "measure_words": [ { "mw": "Hanzi", "pinyin": "pinyin", "example": "Num + MW + word, with pinyin" } ] },')
     prompt = base_prompt + reading_prompt_section + etymology_prompt + other_meaning_prompt + end_prompt
 
     provider = config.get("text_provider", "gemini")
@@ -2113,6 +2178,86 @@ def ensure_starter_deck_and_note_type():
     except Exception as e:
         import traceback
         log_error(f"Tạo bộ thẻ mẫu: {e}\n{traceback.format_exc()}")
+
+# ========== CẬP NHẬT MẪU LUYỆN CÂU CHO ĐIỆN THOẠI ==========
+MOBILE_PRACTICE_TEMPLATE_VERSION = "2026-11-12.3"
+CARD_STYLE_VERSION = "2026-11-11.5"   # phải trùng dòng AVG_CARD_STYLE_VERSION ở đầu styling.txt
+# Mặt sau của các bản đã phát hành, chưa bị người dùng sửa: gặp đúng các mẫu này thì nâng lên bản mới
+_MOBILE_OLD_BACK_SHA256 = {
+    "779e2ebfed3dbf4728ca9c09d0bdff5cc00c58f3b7e951470b3f236a9a9ef65a",   # bản 2.0.0
+    "9e18db2b7b6703872f47dcaeb06b3b87af6b68a620fadaacd07e2cd06c9949fc",   # bản 2.0.1 (2026-11-07.1)
+    "fdf9623d9af39edf955ec22bc9364c7d53bde323ada15cd179b797393add8f2b",   # bản 2.0.2 (2026-11-11.1)
+    "f1916407b5dbdfa104135cb74baad652de0772395ad572d874aa0026c66988b5",   # bản 2.0.3 (2026-11-11.2)
+    "fce7c6ae9e61fbecd7a917f823488db07a65097bace583c1cda075010d62380b",   # bản thử giao diện phẳng (2026-11-11.3)
+    "fb86c8eabed8079cb7ca8d17a473d5ac2ebc902df15dcb94cfbda8b8b86d98ec",   # bản thử giao diện pixel (2026-11-11.4)
+    "b26355a69e7f8fde0b79bf02d1915e79a834bed07b5a7f75c5a780ae4f695afe",   # bản 2026-11-11.5 (trước khi tách công thức tiếng Trung)
+    "6b11cdf4f6b056b8185cd6c34a61c98155a60dd1ff7ff8747a1193a9d1088e6f",   # bản 2026-11-12.1 (công thức tiếng Trung, chưa có Hán Việt)
+    "7d4bc89bcad1d3507771f1c5e7506a32104f6d3654b457aae6be948da4851a3a",   # bản 2026-11-12.2 (Hán Việt, chưa bấm được vào bộ thủ)
+}
+_MOBILE_OLD_FRONT_SHA256 = {
+    "34aacc4e79e3b134edcbe3a2a97669222ed5244162abd5933b96371f037cba45",
+    "b20539a7f6de416b1ff3b56e405b76c87133021f0e66301e9f003f8f91a6b0d3",   # mặt trước đi kèm bản 2026-11-11.2
+    "a4f5e70b2666bc2e3e7b6222f999a05cc9d1383b865adf5d525e4e36eaaf7aed",   # mặt trước đi kèm bản 2026-11-11.3
+    "fe3f3584d2347e8b1e78f8985b26d23c8f37853eac659534fb52493813fb29b1",   # mặt trước đi kèm bản 2026-11-11.4
+}
+
+def _mobile_template_digest(text):
+    import hashlib
+    return hashlib.sha256((text or "").replace("\r\n", "\n").strip().encode("utf-8")).hexdigest()
+
+def _backup_card_css(model, old_css):
+    """Giữ lại CSS cũ của loại thẻ trong user_files trước khi thay giao diện mới."""
+    try:
+        folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_files", "css_backup")
+        os.makedirs(folder, exist_ok=True)
+        safe = re.sub(r"[^A-Za-z0-9_-]+", "_", str(model.get("name", "notetype")))[:60]
+        with open(os.path.join(folder, f"{safe}_{time.strftime('%Y%m%d_%H%M%S')}.css"), "w", encoding="utf-8") as f:
+            f.write(old_css or "")
+    except Exception as e:
+        log_error(f"Sao lưu CSS thẻ: {e}")
+
+def migrate_mobile_practice_templates():
+    """Nâng mẫu gốc đã biết để Sync bản sửa sang điện thoại; giữ mẫu người dùng tự sửa.
+
+    Không đánh dấu hoàn tất toàn bộ collection: mẫu cũ nhập sau cũng cần được nâng cấp.
+    Chỉ đổi template và CSS của loại thẻ, không thay đổi fields hoặc dữ liệu note.
+    Mặt sau bản mới không còn CSS nhúng, nên loại thẻ nào dùng mặt sau bản mới thì phải dùng styling.txt bản mới.
+    """
+    col = getattr(mw, "col", None)
+    if col is None:
+        return
+    try:
+        new_back = _read_addon_text("back_template.txt")
+        new_front = _read_addon_text("front template.txt")
+        new_css = _read_addon_text("styling.txt")
+        version_mark = "AVG_MOBILE_PRACTICE_VERSION: " + MOBILE_PRACTICE_TEMPLATE_VERSION
+        style_mark = "AVG_CARD_STYLE_VERSION: " + CARD_STYLE_VERSION
+        if version_mark not in new_back or style_mark not in new_css:
+            return
+        for model in col.models.all():
+            changed = False
+            uses_new_back = False
+            for template in model.get("tmpls", []):
+                old_back = template.get("afmt", "")
+                is_original = _mobile_template_digest(old_back) in _MOBILE_OLD_BACK_SHA256
+                is_updated = version_mark in old_back
+                if is_original:
+                    template["afmt"] = new_back
+                    changed = True
+                if (is_original or is_updated) and _mobile_template_digest(template.get("qfmt", "")) in _MOBILE_OLD_FRONT_SHA256 \
+                        and _mobile_template_digest(template.get("qfmt", "")) != _mobile_template_digest(new_front):
+                    template["qfmt"] = new_front
+                    changed = True
+                uses_new_back = uses_new_back or is_original or is_updated
+            if uses_new_back and style_mark not in model.get("css", ""):
+                _backup_card_css(model, model.get("css", ""))
+                model["css"] = new_css
+                changed = True
+            if changed:
+                col.models.save(model)
+    except Exception as e:
+        log_error(f"Cập nhật mẫu luyện câu trên điện thoại: {e}")
+
 
 class SettingsDialog(QDialog):
     def _key_box(self, layout, label, keys, tip, min_height=120):
@@ -7950,5 +8095,6 @@ gui_hooks.main_window_did_init.append(setup_menu)
 # Mở profile: chuyển key đang ghi cứng trong thẻ sang cài đặt (1 lần) rồi ghi file key cho thẻ (_avg_card_keys.js)
 gui_hooks.profile_did_open.append(migrate_card_keys_and_write_file)
 gui_hooks.profile_did_open.append(ensure_starter_deck_and_note_type)
+gui_hooks.profile_did_open.append(migrate_mobile_practice_templates)
 
 print("✅ Gemini Editor Filler đã được tải thành công!")
