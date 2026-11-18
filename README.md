@@ -92,6 +92,17 @@ Tiện ích có hai nguồn tạo hình minh họa. Bạn có thể để hệ t
 - **TTS Model:** Select the model used to generate speech. The default is `gemini-2.5-flash-preview-tts`.
 - The voice is chosen automatically from the language of the text.
 
+**Two listen buttons on the card:**
+
+| Button | Voice | Needs |
+| --- | --- | --- |
+| 🔊 | Gemini TTS (most natural) | Gemini key, internet |
+| ⚡ | Google Translate voice | **Free, no key**, internet |
+
+- If 🔊 cannot reach Gemini (no key, quota used up, network error), it reads with the Google Translate voice instead.
+- The device's built-in voice is no longer used. Without internet, ⚡ shows ⚠️ for a moment instead of reading.
+- Long sentences are split into parts of up to 180 characters and played one after another. Tap the button again to stop.
+
 ### 🃏 Keys for Practice Buttons on the Card
 
 The sentence-practice buttons (and 🔊) run inside the card itself, including on your phone, where the add-on does not run. So the add-on writes the keys into a small media file (`_avg_card_keys.js`), which Anki syncs to your phone.
@@ -115,6 +126,7 @@ The sentence-practice buttons (and 🔊) run inside the card itself, including o
 | 🔗 | Finds and generates additional vocabulary related to the reading passage. |
 | 🔊 **Ctrl + Alt + Q** | Generates pronunciation audio using Gemini TTS. |
 | 🖼️ **Ctrl + Alt + I** | Generates an illustration only, without regenerating the entire flashcard. |
+| **Ảnh: BẬT / TẮT** | Turns automatic image generation on or off (used by ✨ Ctrl + G and bulk adding). Same setting as in Settings. The 🖼️ button still works when it is off. |
 | 🏷️ | Automatically tags vocabulary by subject area and difficulty. |
 | 📝 | Creates translation exercises for the selected topic or field. |
 | 🎧 | Creates interpreting or listen-and-repeat (shadowing) exercises. |
