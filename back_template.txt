@@ -3,7 +3,7 @@
         <div class="word-and-tts">
             <div class="word">{{Word}}</div>
             <button class="tts-btn gemini-btn" onclick="speakWithGemini('{{Word}}', event)" title="Gemini AI (Thông minh)">🔊</button>
-            <button class="tts-btn edge-btn" onclick="speakWithEdgeReal('{{Word}}', event)" title="Microsoft Edge (Nhanh & Tự nhiên)">⚡</button>
+            <button class="tts-btn edge-btn" onclick="speakWithEdgeReal('{{Word}}', event)" title="Google Translate (miễn phí, cần mạng)">⚡</button>
         </div>
         <div class="ipa">{{IPA}}</div>
         {{#StrokeCount}}
@@ -182,7 +182,6 @@
     <div id="radicals-data">{{Radicals}}</div>
     <div id="stroke-count-char-data">{{StrokeCountChar}}</div>
     <div id="exercises-data">{{Exercises}}</div>
-    <div id="example-en-text-data">{{Example_EN_Text}}</div>
     <div id="other-meaning-data">{{OtherMeaning}}</div>
     <div id="context-data">{{Context}}</div>
 </div>
@@ -763,7 +762,7 @@
 </style>
 
 <script>
-// AVG_MOBILE_PRACTICE_VERSION: 2026-11-12.3
+// AVG_MOBILE_PRACTICE_VERSION: 2026-11-18.1
 // Anki may reuse one webview for several cards. Dispose of the previous card first.
 if (window.__avgCardSession && window.__avgCardSession.dispose) window.__avgCardSession.dispose();
 var avgCardSession = {
@@ -816,102 +815,134 @@ function toggleSection(sectionId) {
         }
     }
 }
-// ==================== XỬ LÝ MICROSOFT EDGE TTS ====================
+// ==================== GOOGLE TRANSLATE TTS (nút ⚡) ====================
+// Miễn phí, không cần API key, cần có mạng. Không dùng giọng có sẵn của máy nữa.
+// Google trả 404 nếu request có Referer, và 400 nếu một lần đọc dài hơn khoảng 200 ký tự.
+var AVG_GOOGLE_TTS_MAX = 180;
+var avgGoogleAudio = null;   // dùng lại một thẻ <audio>: iOS cho phát tiếp các đoạn sau lần bấm đầu
+var avgGoogleBtn = null;
+var avgGoogleToken = 0;      // mỗi lượt đọc một số; lượt cũ bị dừng thì bỏ qua sự kiện của nó
+var avgGoogleTimer = null;
 
-function getEdgeVoice(text) {
-    const lang = detectLanguage(text);
-    switch (lang) {
-        case 'zh': return 'zh-CN-XiaoxiaoNeural';
-        case 'ja': return 'ja-JP-NanamiNeural';
-        case 'ko': return 'ko-KR-SunHiNeural';
-        case 'vi': return 'vi-VN-NamMinhNeural';
-        case 'de': return 'de-DE-KatjaNeural';
-        default:   return 'en-GB-RyanNeural'; // Force UK voice
-    }
+function avgTtsBtnIcon(b) {
+    return b && b.classList.contains('edge-btn') ? '⚡' : '🔊';
 }
 
-async function speakWithEdgeReal(text, event) {
+function avgGoogleTtsLang(text) {
+    if (/[぀-ヿ]/.test(text)) return 'ja';
+    if (/[一-鿿㐀-䶿]/.test(text)) return 'zh-CN';
+    if (/[가-힣]/.test(text)) return 'ko';
+    if (detectLanguage(text) === 'vi') return 'vi';
+    if (/[äöüß]/i.test(text)) return 'de';
+    return 'en-GB'; // giọng Anh-Anh, giống nút 🔊
+}
+
+// Cắt câu dài: ưu tiên dấu chấm câu, rồi dấu phẩy, rồi khoảng trắng
+function avgGoogleTtsChunks(text) {
+    var max = AVG_GOOGLE_TTS_MAX, parts = [];
+    var rest = text.replace(/\s+/g, ' ').trim();
+    var breaks = [/[.!?。！？;；](?=[^.!?。！？;；]*$)/, /[,，、:：](?=[^,，、:：]*$)/, / (?=[^ ]*$)/];
+    while (rest.length > max) {
+        var head = rest.slice(0, max), cut = -1;
+        for (var i = 0; i < breaks.length && cut < 0; i++) {
+            var m = head.match(breaks[i]);
+            if (m && m.index > max * 0.3) cut = m.index + 1;
+        }
+        if (cut < 0) cut = max;
+        parts.push(rest.slice(0, cut).trim());
+        rest = rest.slice(cut).trim();
+    }
+    if (rest) parts.push(rest);
+    return parts.filter(Boolean);
+}
+
+function avgNoReferrer() {
+    if (document.querySelector('meta[name="referrer"][content="no-referrer"]')) return;
+    var m = document.createElement('meta');
+    m.name = 'referrer';
+    m.content = 'no-referrer';
+    (document.head || document.documentElement).appendChild(m);
+}
+
+function avgStopGoogleAudio() {
+    avgGoogleToken++;
+    clearTimeout(avgGoogleTimer);
+    if (avgGoogleAudio) {
+        avgGoogleAudio.onended = avgGoogleAudio.onerror = avgGoogleAudio.onplaying = null;
+        try { avgGoogleAudio.pause(); } catch (e) {}
+    }
+    if (avgGoogleBtn) {
+        avgGoogleBtn.classList.remove('playing');
+        avgGoogleBtn.innerHTML = avgTtsBtnIcon(avgGoogleBtn);
+    }
+    avgGoogleBtn = null;
+}
+
+function speakWithGoogle(text, btn) {
+    avgStopGoogleAudio();
+    var clean = (text || '').replace(/[\(\[\{\<][^\)\]\}\>]*[\)\]\}\>]/g, '').trim() || (text || '').trim();
+    if (!clean) return;
+    avgNoReferrer();
+    var lang = avgGoogleTtsLang(clean);
+    var queue = avgGoogleTtsChunks(clean).map(function(c) {
+        return 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=' + lang + '&q=' + encodeURIComponent(c);
+    });
+    if (!avgGoogleAudio) avgGoogleAudio = new Audio();
+    var audio = avgGoogleAudio;
+    var token = avgGoogleToken;
+    avgGoogleBtn = btn || null;
+    if (btn) { btn.classList.add('playing'); btn.innerHTML = '⏳'; }
+
+    var finish = function() {
+        if (token !== avgGoogleToken) return;
+        avgStopGoogleAudio();
+    };
+    var fail = function(e) {
+        if (token !== avgGoogleToken) return;
+        console.warn('Google TTS lỗi:', e);
+        var b = avgGoogleBtn;
+        avgStopGoogleAudio();
+        if (b) {
+            b.innerHTML = '⚠️'; // không đọc được: thường do mất mạng
+            setTimeout(function() { if (b.innerHTML === '⚠️') b.innerHTML = avgTtsBtnIcon(b); }, 2000);
+        }
+    };
+    var next = function() {
+        if (token !== avgGoogleToken) return;
+        var url = queue.shift();
+        if (!url) { finish(); return; }
+        clearTimeout(avgGoogleTimer);
+        avgGoogleTimer = setTimeout(function() { fail('timeout'); }, 8000);
+        audio.src = url;
+        var p = audio.play();
+        if (p && p.catch) p.catch(fail);
+    };
+    audio.onplaying = function() {
+        if (token !== avgGoogleToken) return;
+        clearTimeout(avgGoogleTimer);
+        if (avgGoogleBtn) avgGoogleBtn.innerHTML = '⏹️';
+    };
+    audio.onended = next;
+    audio.onerror = fail;
+    next();
+}
+
+function speakWithEdgeReal(text, event) {
     if (event) event.stopPropagation();
-    
-    const cleanText = text ? text.replace(/[\(\[\{\<][^\)\]\}\>]*[\)\]\}\>]/g, '').trim() : '';
-    if (!cleanText) return;
-
-    let btn = event?.target;
+    var btn = event && event.target;
     if (btn && btn.tagName !== 'BUTTON') btn = btn.closest('button');
-    
-    // --- Cập nhật UI ---
-    if (btn) {
-        document.querySelectorAll('.tts-btn').forEach(b => {
-            b.classList.remove('playing');
-            if (b.classList.contains('gemini-btn')) b.innerHTML = '🔊';
-            if (b.classList.contains('edge-btn')) b.innerHTML = '⚡';
-        });
-        
-        btn.classList.add('playing');
-        btn.innerHTML = '⏹️'; // Icon Stop khi đang đọc (theo code mẫu)
-    }
-
-    // --- Dừng các luồng âm thanh cũ ---
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    // Bấm lại nút đang đọc thì dừng
+    if (btn && btn === avgGoogleBtn) { avgStopGoogleAudio(); return; }
+    // Dừng Gemini đang tải hoặc đang phát
+    cleanupOldRequests();
     if (typeof audioCtx !== 'undefined' && audioCtx && audioCtx.state === 'running') {
-        try { audioCtx.close(); } catch(e){}
+        try { audioCtx.close(); } catch (e) {}
+        audioCtx = null;
     }
-
-    if (!window.speechSynthesis) return;
-
-    // --- Web Speech API Logic (Thay thế Fetch Edge API để chạy được trên Mobile) ---
-    const u = new SpeechSynthesisUtterance(cleanText);
-    
-    // Phát hiện ngôn ngữ (dựa theo logic code mẫu)
-    const isChinese = /[\u4e00-\u9fff\u3400-\u4dbf]/.test(cleanText);
-    const lang = isChinese ? 'zh' : 'en';
-
-    // Cấu hình giọng đọc
-    if(lang === 'zh'){
-        u.lang = 'zh-CN';
-        u.rate = 0.8;
-        u.pitch = 1.0;
-    } else {
-        u.lang = 'en-GB'; // Force UK accent
-        u.rate = 0.9;
-        u.pitch = 1.0;
-    }
-
-    // Hàm phát âm thanh
-    const play = () => {
-        const voices = window.speechSynthesis.getVoices();
-        let v = null;
-        if(lang === 'zh') {
-            v = voices.find(x => x.lang.includes('zh') || x.lang.includes('cn') || x.name.toLowerCase().includes('chinese'));
-        } else {
-            // Ưu tiên giọng UK (en-GB), fallback sang bất kỳ giọng en nào
-            v = voices.find(x => x.lang === 'en-GB')
-              || voices.find(x => x.lang.startsWith('en-GB'))
-              || voices.find(x => x.name.toLowerCase().includes('british'))
-              || voices.find(x => x.lang.startsWith('en'));
-        }
-        
-        if(v) u.voice = v;
-        window.speechSynthesis.speak(u);
-    };
-
-    // Sự kiện khi đọc xong hoặc lỗi
-    const reset = () => {
-        if (btn) {
-            btn.classList.remove('playing');
-            btn.innerHTML = '⚡'; // Trả về icon tia sét ban đầu
-        }
-    };
-    u.onend = reset;
-    u.onerror = reset;
-
-    // Xử lý trường hợp danh sách giọng đọc chưa tải xong
-    if (window.speechSynthesis.getVoices().length === 0) {
-        window.speechSynthesis.onvoiceschanged = play;
-    } else {
-        play();
-    }
+    resetTTSIcons();
+    speakWithGoogle(text, btn);
 }
+
 function speakExampleEdge(event) {
     const exEl = document.getElementById('example-en-data');
     if (!exEl) return;
@@ -1029,6 +1060,7 @@ function stopTTS() {
     if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
     }
+    avgStopGoogleAudio();
     resetTTSIcons();
 }
 
@@ -1042,8 +1074,8 @@ function cleanupOldRequests() {
         globalTTSAbortController.abort(); // Ngắt kết nối mạng ngay lập tức
         globalTTSAbortController = null;
     }
-    // Dừng Web Speech cũ nếu đang nói
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    // Dừng giọng Google (nút ⚡) nếu đang đọc
+    avgStopGoogleAudio();
 }
 
 async function speakWithGemini(text, event, keyIndex = 0) {
@@ -1087,6 +1119,7 @@ async function speakWithGemini(text, event, keyIndex = 0) {
 
     // --- XỬ LÝ GIAO DIỆN (Chỉ lần đầu) ---
     if (keyIndex === 0) {
+        avgStopGoogleAudio();
         if (audioCtx && audioCtx.state === 'running') {
             try { audioCtx.close(); } catch(e){}
             audioCtx = null;
@@ -1278,67 +1311,11 @@ function resetTTSIcons() {
     currentGeminiTTSButton = null;
 }
 
-// Fallback: Web Speech API (Cực kỳ đơn giản và nhanh)
+// Nút 🔊 không gọi được Gemini (chưa có key, hết lượt, mất mạng): đọc bằng Google Translate thay cho giọng máy
 function speakWithWebSpeechFallback(text, event) {
-    if (!window.speechSynthesis) return;
-    
-    console.log(">> Running Fallback TTS");
-    
-    // Đảm bảo dừng mọi thứ trước đó
-    window.speechSynthesis.cancel();
-    
-    const u = new SpeechSynthesisUtterance(text);
-    
-    // Cố gắng chọn giọng tốt nhất
-    const lang = detectLanguage(text);
-    if (lang === 'zh') u.lang = 'zh-CN';
-    else if (lang === 'vi') u.lang = 'vi-VN';
-    else if (lang === 'ja') u.lang = 'ja-JP';
-    else {
-        u.lang = 'en-GB'; // Force UK accent
-        // Tìm giọng UK trong danh sách
-        const voices = window.speechSynthesis.getVoices();
-        const ukVoice = voices.find(x => x.lang === 'en-GB')
-                     || voices.find(x => x.lang.startsWith('en-GB'))
-                     || voices.find(x => x.name.toLowerCase().includes('british'));
-        if (ukVoice) u.voice = ukVoice;
-    }
-    
-    u.rate = 0.9;
-    
-    // Hiệu ứng nút
     var btn = currentGeminiTTSButton;
-    // Nếu không tìm thấy biến toàn cục, tìm lại qua event
-    if (!btn && event && event.target) {
-        btn = event.target.closest('button') || event.target;
-    }
-
-    if (btn) {
-        btn.classList.add('playing');
-        btn.innerHTML = '🗣️'; // Icon khác để biết là fallback
-        
-        u.onstart = function() { 
-            if(btn) btn.innerHTML = '⏹️'; 
-        };
-        u.onend = function() { 
-            if(btn) {
-                btn.classList.remove('playing');
-                if (btn.classList.contains('gemini-btn')) btn.innerHTML = '🔊';
-                else if (btn.classList.contains('edge-btn')) btn.innerHTML = '⚡';
-                else btn.innerHTML = '🔊';
-            }
-        };
-        u.onerror = function() {
-            if(btn) {
-                btn.classList.remove('playing');
-                if (btn.classList.contains('gemini-btn')) btn.innerHTML = '🔊';
-                else if (btn.classList.contains('edge-btn')) btn.innerHTML = '⚡';
-                else btn.innerHTML = '🔊';
-            }
-        };
-    }
-    
-    window.speechSynthesis.speak(u);
+    if (!btn && event && event.target) btn = event.target.closest('button') || event.target;
+    speakWithGoogle(text, btn);
 }
 
 function detectLanguage(text) {
@@ -3543,7 +3520,7 @@ function renderLists(){
             <div class="item-list-word" style="font-size: 1.1em; font-weight: bold; margin-bottom: 5px;">
                 ${item.word} <span class="item-list-pos" style="color: #666; font-weight: normal; font-size: 0.9em;">(${item.pos || ''})</span>
                 <button class="tts-btn-small" onclick="speakWithGemini('${safeWord}', event)" title="Nghe (Gemini)">🔊</button>
-                <button class="tts-btn-small" onclick="speakWithEdgeReal('${safeWord}', event)" title="Nghe (Edge)">⚡</button>
+                <button class="tts-btn-small" onclick="speakWithEdgeReal('${safeWord}', event)" title="Nghe (Google)">⚡</button>
             </div>
             ${item.meaning_vi ? `<div class="item-list-meaning" style="color: #d32f2f; margin-bottom: 5px;"><strong>Nghĩa:</strong> ${item.meaning_vi}</div>` : ''}
             ${item.example ? `<div class="item-list-example" style="color: #333; margin-bottom: 3px;"><strong>VD:</strong> <em>${item.example}</em></div>` : ''}

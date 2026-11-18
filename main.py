@@ -327,7 +327,6 @@ FIELD_MAP = {
     "StrokeCountChar": "stroke_count_char",
     "Exercises": "exercises",
     "Reading": "reading",
-    "TreeDiagram": "tree_diagram",
     # THÊM CÁC TRƯỜNG MỚI
     "Reading_Vocabulary": "reading_vocabulary",
     "Reading_Structures": "reading_structures",
@@ -2133,10 +2132,23 @@ STARTER_NOTE_TYPE = "Gemini Vocabulary"     # tên loại thẻ (note type) đư
 STARTER_DECK = "Gemini Vocabulary"          # tên bộ thẻ (deck) được tạo
 STARTER_FLAG = "avg_starter_deck_created"   # đánh dấu trong từng bộ sưu tập: chỉ tạo một lần
 # Ô dữ liệu: Word đứng đầu (Anki dùng ô đầu để báo trùng). Gồm mọi ô trong FIELD_MAP + các ô người dùng/bài tập.
-STARTER_FIELDS = list(dict.fromkeys(
+_STARTER_ALL_FIELDS = list(dict.fromkeys(
     ["Word"] + [f for f in FIELD_MAP if f != "Image Querry"] +
-    ["Context", "Image", "Audio", "UserSentence", "Example_EN_Text",
+    ["Context", "Image", "Audio", "UserSentence",
      "Translation_Practice", "Interpreting_Drills", "Domain_Tag", "Difficulty_Tag"]))
+# Thứ tự ô hiện trong cửa sổ Add: giống loại thẻ gốc của tác giả (Context ngay dưới Word, Audio/Image ở giữa).
+# Ô nào có trong FIELD_MAP mà chưa ghi ở đây (ô thêm sau này) tự nối vào cuối.
+# Đã bỏ TreeDiagram và Example_EN_Text: không có code nào điền vào hay đọc ra.
+_STARTER_ORDER = [
+    "Word", "Context", "IPA", "PartOfSpeech", "Definition_EN", "Definition_VI", "Example_EN", "Example_VI",
+    "Synonyms", "Antonyms", "WordFamily", "Collocations", "PhrasalVerbs", "Idioms", "Audio", "Image",
+    "ImageQuery", "Recommendation", "Language", "GrammarNotes", "UsagePatterns", "Etymology", "Radicals",
+    "StrokeCount", "StrokeCountChar", "Exercises", "UserSentence", "Reading",
+    "Reading_Vocabulary", "Reading_Structures", "OtherMeaning", "Translation_Practice", "Interpreting_Drills",
+    "Domain_Tag", "Difficulty_Tag",
+]
+STARTER_FIELDS = ([f for f in _STARTER_ORDER if f in _STARTER_ALL_FIELDS] +
+                  [f for f in _STARTER_ALL_FIELDS if f not in _STARTER_ORDER])
 STARTER_MARKER_FIELDS = {"Word", "Definition_VI", "Exercises"}   # có loại thẻ nào đủ 3 ô này là bộ thẻ đã sẵn sàng
 
 def _read_addon_text(filename):
@@ -2180,7 +2192,7 @@ def ensure_starter_deck_and_note_type():
         log_error(f"Tạo bộ thẻ mẫu: {e}\n{traceback.format_exc()}")
 
 # ========== CẬP NHẬT MẪU LUYỆN CÂU CHO ĐIỆN THOẠI ==========
-MOBILE_PRACTICE_TEMPLATE_VERSION = "2026-11-12.3"
+MOBILE_PRACTICE_TEMPLATE_VERSION = "2026-11-18.1"
 CARD_STYLE_VERSION = "2026-11-11.5"   # phải trùng dòng AVG_CARD_STYLE_VERSION ở đầu styling.txt
 # Mặt sau của các bản đã phát hành, chưa bị người dùng sửa: gặp đúng các mẫu này thì nâng lên bản mới
 _MOBILE_OLD_BACK_SHA256 = {
@@ -2193,6 +2205,7 @@ _MOBILE_OLD_BACK_SHA256 = {
     "b26355a69e7f8fde0b79bf02d1915e79a834bed07b5a7f75c5a780ae4f695afe",   # bản 2026-11-11.5 (trước khi tách công thức tiếng Trung)
     "6b11cdf4f6b056b8185cd6c34a61c98155a60dd1ff7ff8747a1193a9d1088e6f",   # bản 2026-11-12.1 (công thức tiếng Trung, chưa có Hán Việt)
     "7d4bc89bcad1d3507771f1c5e7506a32104f6d3654b457aae6be948da4851a3a",   # bản 2026-11-12.2 (Hán Việt, chưa bấm được vào bộ thủ)
+    "60e6b3afc8e843ceeaacba1c3892f30def526b4616d5462f56d2797b407d8453",   # bản 2.0.5 (2026-11-12.3, nút ⚡ còn dùng giọng máy)
 }
 _MOBILE_OLD_FRONT_SHA256 = {
     "34aacc4e79e3b134edcbe3a2a97669222ed5244162abd5933b96371f037cba45",
@@ -8064,6 +8077,24 @@ EDITOR_BUTTONS = [
     ("gemini_interp_drill", "🎧", "🎧 Generate Interpreting/Shadowing", None, generate_interpreting_drill_logic, True),
 ]
 
+# Nút bật/tắt "tự động tạo ảnh" (cùng cài đặt với ô "Bật tính năng tự động tạo ảnh" trong Settings).
+# Chỉ ảnh hưởng ảnh tự vẽ khi Ctrl+G / thêm hàng loạt; nút 🖼️ (Ctrl+Alt+I) vẫn vẽ được khi tắt.
+AUTO_IMAGE_TOGGLE_ID = "avg_auto_image_toggle"
+
+def _auto_image_label(on):
+    return "Ảnh: BẬT" if on else "Ảnh: TẮT"
+
+def toggle_auto_image_gen(editor):
+    config = load_config()
+    on = not config.get("auto_image_gen", True)
+    config["auto_image_gen"] = on
+    save_config(config)
+    label = _auto_image_label(on)
+    # Đổi chữ trên nút ngay, không cần mở lại cửa sổ
+    editor.web.eval("(function(){var b=document.getElementById(%s); if(b) b.textContent=%s;})();"
+                    % (json.dumps(AUTO_IMAGE_TOGGLE_ID), json.dumps(label)))
+    tooltip("🖼️ Đã BẬT tự động tạo ảnh khi điền thẻ" if on else "🚫 Đã TẮT tự động tạo ảnh (nút 🖼️ vẫn vẽ tay được)")
+
 def add_all_editor_buttons(buttons, editor):
     """Thêm tất cả các nút vào thanh công cụ editor"""
     if not editor:
@@ -8080,6 +8111,17 @@ def add_all_editor_buttons(buttons, editor):
             ))
         except Exception as e:
             print(f"❌ Lỗi khi thêm nút {label} vào editor: {e}")
+    try:
+        buttons.append(editor.addButton(
+            icon=None,
+            cmd="avg_toggle_auto_image",
+            func=toggle_auto_image_gen,
+            tip="Bật/tắt tự động tạo ảnh khi điền thẻ (Ctrl+G, thêm hàng loạt)",
+            label=_auto_image_label(load_config().get("auto_image_gen", True)),
+            id=AUTO_IMAGE_TOGGLE_ID,
+        ))
+    except Exception as e:
+        print(f"❌ Lỗi khi thêm nút bật/tắt ảnh vào editor: {e}")
     return buttons
 
 # Hooks cho chức năng chính
